@@ -1,0 +1,26 @@
+{
+  "builds": [
+    {
+      "src": "tech-store-frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    },
+    {
+      "src": "tech-store-backend/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/tech-store-backend/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/tech-store-frontend/$1"
+    }
+  ],
+  "outputDirectory": "tech-store-frontend/build"
+}
