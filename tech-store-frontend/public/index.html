@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    
+    <!-- PWA Meta Tags -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="background-color" content="#ffffff" />
+    
+    <!-- PWA Meta Tags para iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="TechStore" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- Splash Screens para iOS -->
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/iphone5_splash.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/iphone6_splash.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/iphoneplus_splash.png" media="(device-width: 621px) and (device-height: 1104px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/iphonex_splash.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/iphonexr_splash.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/iphonexsmax_splash.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/ipad_splash.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/ipadpro1_splash.png" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/ipadpro3_splash.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="%PUBLIC_URL%/splash/ipadpro2_splash.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" />
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="%PUBLIC_URL%/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="%PUBLIC_URL%/icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="%PUBLIC_URL%/icons/icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="%PUBLIC_URL%/icons/icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="%PUBLIC_URL%/icons/icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="%PUBLIC_URL%/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="%PUBLIC_URL%/icons/icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="57x57" href="%PUBLIC_URL%/icons/icon-57x57.png">
+    
+    <!-- Standard Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/icons/icon-16x16.png">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="TechStore - La mejor tienda de productos tecnológicos con envío gratis y soporte 24/7. Encuentra smartphones, laptops, audio, gaming y más." />
+    <meta name="keywords" content="tecnología, smartphones, laptops, audio, gaming, ecommerce, tienda online, Colombia" />
+    <meta name="author" content="TechStore" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://techstore.com/" />
+    <meta property="og:title" content="TechStore - Tu Tienda de Tecnología" />
+    <meta property="og:description" content="Los mejores productos tecnológicos al mejor precio. Envío gratis, garantía y soporte 24/7." />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="TechStore" />
+    <meta property="og:locale" content="es_CO" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://techstore.com/" />
+    <meta property="twitter:title" content="TechStore - Tu Tienda de Tecnología" />
+    <meta property="twitter:description" content="Los mejores productos tecnológicos al mejor precio. Envío gratis, garantía y soporte 24/7." />
+    <meta property="twitter:image" content="%PUBLIC_URL%/twitter-image.png" />
+    <meta property="twitter:creator" content="@techstore" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="msapplication-TileImage" content="%PUBLIC_URL%/icons/icon-144x144.png" />
+    <meta name="msapplication-config" content="%PUBLIC_URL%/browserconfig.xml" />
+    
+    <!-- Performance Hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://images.unsplash.com">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    
+    <!-- Critical CSS -->
+    <style>
+      /* Critical CSS para mejorar el tiempo de carga */
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f9fafb;
+      }
+      
+      /* Spinner de carga */
+      .app-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      
+      .app-loading-logo {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: white;
+        margin-bottom: 2rem;
+        animation: pulse 2s infinite;
+      }
+      
+      .app-loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      
+      /* Ocultar cuando la app esté lista */
+      .app-ready .app-loading {
+        display: none;
+      }
+      
+      /* Estilos para PWA */
+      .pwa-install-prompt {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        padding: 16px;
+        display: none;
+        z-index: 1000;
+        animation: slideUp 0.3s ease-out;
+      }
+      
+      @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+      
+      /* Offline indicator */
+      .offline-indicator {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #f59e0b;
+        color: white;
+        text-align: center;
+        padding: 8px;
+        font-size: 14px;
+        z-index: 1001;
+        transform: translateY(-100%);
+        transition: transform 0.3s ease;
+      }
+      
+      .offline-indicator.show {
+        transform: translateY(0);
+      }
+    </style>
+    
+    <title>TechStore - Tu Tienda de Tecnología</title>
+  </head>
+  <body>
+    <noscript>
+      <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+        <h1>JavaScript Requerido</h1>
+        <p>TechStore requiere JavaScript para funcionar correctamente.</p>
+        <p>Por favor habilita JavaScript en tu navegador e intenta nuevamente.</p>
+      </div>
+    </noscript>
+    
+    <!-- Loading Screen -->
+    <div class="app-loading" id="app-loading">
+      <div class="app-loading-logo">TechStore</div>
+      <div class="app-loading-spinner"></div>
+      <p style="color: white; margin-top: 1rem; opacity: 0.8;">Cargando tu tienda favorita...</p>
+    </div>
+    
+    <!-- Offline Indicator -->
+    <div class="offline-indicator" id="offline-indicator">
+      📶 Sin conexión - Algunas funciones están limitadas
+    </div>
+    
+    <!-- PWA Install Prompt -->
+    <div class="pwa-install-prompt" id="pwa-install-prompt">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #2563eb, #7c3aed); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">
+          T
+        </div>
+        <div style="flex: 1;">
+          <h3 style="margin: 0; font-size: 16px; color: #111827;">¡Instala TechStore!</h3>
+          <p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">Accede más rápido a tus productos favoritos</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="pwa-install-dismiss" style="padding: 8px 12px; border: 1px solid #d1d5db; background: white; border-radius: 6px; font-size: 14px; cursor: pointer;">
+            Ahora no
+          </button>
+          <button id="pwa-install-accept" style="padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+            Instalar
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- React App Root -->
+    <div id="root"></div>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      // Remove loading screen when page is ready
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          document.body.classList.add('app-ready');
+        }, 1000);
+      });
+      
+      // Service Worker Registration
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('SW registered with scope: ', registration.scope);
+              
+              // Update available
+              registration.addEventListener('updatefound', function() {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', function() {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Show update available notification
+                    if (confirm('Nueva versión disponible. ¿Actualizar ahora?')) {
+                      newWorker.postMessage({ type: 'SKIP_WAITING' });
+                      window.location.reload();
+                    }
+                  }
+                });
+              });
+            })
+            .catch(function(error) {
+              console.log('SW registration failed: ', error);
+            });
+        });
+        
+        // Listen to SW messages
+        navigator.serviceWorker.addEventListener('message', function(event) {
+          if (event.data.type === 'CART_SYNCED') {
+            // Show success message
+            console.log('Cart synced successfully');
+          }
+        });
+      }
+      
+      // PWA Install Prompt
+      let deferredPrompt;
+      const installPrompt = document.getElementById('pwa-install-prompt');
+      const installAccept = document.getElementById('pwa-install-accept');
+      const installDismiss = document.getElementById('pwa-install-dismiss');
+      
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Show custom install prompt after 3 seconds if not dismissed
+        setTimeout(function() {
+          if (!localStorage.getItem('pwa-install-dismissed')) {
+            installPrompt.style.display = 'block';
+          }
+        }, 3000);
+      });
+      
+      installAccept.addEventListener('click', function() {
+        installPrompt.style.display = 'none';
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(choiceResult) {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('User accepted the install prompt');
+            } else {
+              console.log('User dismissed the install prompt');
+            }
+            deferredPrompt = null;
+          });
+        }
+      });
+      
+      installDismiss.addEventListener('click', function() {
+        installPrompt.style.display = 'none';
+        localStorage.setItem('pwa-install-dismissed', 'true');
+      });
+      
+      // Offline/Online Detection
+      const offlineIndicator = document.getElementById('offline-indicator');
+      
+      function updateOnlineStatus() {
+        if (navigator.onLine) {
+          offlineIndicator.classList.remove('show');
+        } else {
+          offlineIndicator.classList.add('show');
+        }
+      }
+      
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      updateOnlineStatus(); // Check initial status
+      
+      // Background Sync Registration
+      if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+        navigator.serviceWorker.ready.then(function(registration) {
+          // Register background sync for cart
+          window.syncCart = function() {
+            return registration.sync.register('sync-cart');
+          };
+          
+          // Register background sync for orders
+          window.syncOrders = function() {
+            return registration.sync.register('sync-orders');
+          };
+        });
+      }
+      
+      // Push Notifications Setup
+      if ('Notification' in window && 'serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.ready.then(function(registration) {
+            // Request permission for notifications
+            window.requestNotificationPermission = function() {
+              return Notification.requestPermission().then(function(permission) {
+                if (permission === 'granted') {
+                  console.log('Notification permission granted');
+                  // Subscribe to push notifications here if needed
+                  return subscribeToPush(registration);
+                } else {
+                  console.log('Notification permission denied');
+                }
+                return null;
+              });
+            };
+          });
+        });
+      }
+      
+      function subscribeToPush(registration) {
+        // This would be implemented with your push service
+        // For example, with Firebase Cloud Messaging or OneSignal
+        console.log('Push subscription setup would go here');
+        return null;
+      }
+      
+      // Performance Monitoring
+      if ('performance' in window) {
+        window.addEventListener('load', function() {
+          setTimeout(function() {
+            const perfData = performance.getEntriesByType('navigation')[0];
+            console.log('Page Load Time:', perfData.loadEventEnd - perfData.fetchStart, 'ms');
+            
+            // Send to analytics if needed
+          }, 0);
+        });
+      }
+      
+      // Prevent zoom on iOS
+      document.addEventListener('gesturestart', function(e) {
+        e.preventDefault();
+      });
+      
+      // Prevent double-tap zoom
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function(event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
+    </script>
+  </body>
+</html>

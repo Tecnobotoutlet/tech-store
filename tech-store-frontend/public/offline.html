@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sin Conexión - TechStore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            position: relative;
+        }
+
+        .wifi-symbol {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .wifi-arc {
+            position: absolute;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-bottom: none;
+            border-left: none;
+            border-right: none;
+        }
+
+        .wifi-arc:nth-child(1) {
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-color: #ff6b6b;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .wifi-arc:nth-child(2) {
+            width: 50px;
+            height: 50px;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 1.5s ease-in-out infinite 0.2s;
+        }
+
+        .wifi-arc:nth-child(3) {
+            width: 80px;
+            height: 80px;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 1.5s ease-in-out infinite 0.4s;
+        }
+
+        .wifi-arc:nth-child(4) {
+            width: 110px;
+            height: 110px;
+            top: 15%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 1.5s ease-in-out infinite 0.6s;
+        }
+
+        .cross {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+        }
+
+        .cross::before,
+        .cross::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 3px;
+            background: #ff6b6b;
+            border-radius: 2px;
+        }
+
+        .cross::before {
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .cross::after {
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            line-height: 1.6;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: 2px solid white;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border-color: transparent;
+        }
+
+        .btn-primary:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        .features {
+            animation: fadeInUp 0.8s ease-out 0.6s both;
+        }
+
+        .features h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .feature {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .feature h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            opacity: 0.9;
+        }
+
+        .feature p {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            line-height: 1.4;
+        }
+
+        .status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            animation: slideInRight 0.5s ease-out;
+            z-index: 10;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5)); }
+            100% { filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.8)); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            33% { transform: translateY(-30px) rotate(120deg); }
+            66% { transform: translateY(30px) rotate(240deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .logo {
+                font-size: 2.5rem;
+            }
+            
+            .icon {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Online status */
+        .online {
+            display: none;
+        }
+
+        body.is-online .online {
+            display: block;
+        }
+
+        body.is-online .offline {
+            display: none;
+        }
+    </style>
+</head>
+<body class="offline">
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Status Indicator -->
+    <div class="status offline" id="status">
+        📶 Sin Conexión
+    </div>
+
+    <div class="container">
+        <div class="logo">TechStore</div>
+        
+        <div class="icon">
+            <div class="wifi-symbol">
+                <div class="wifi-arc"></div>
+                <div class="wifi-arc"></div>
+                <div class="wifi-arc"></div>
+                <div class="wifi-arc"></div>
+            </div>
+            <div class="cross"></div>
+        </div>
+
+        <h1 class="title offline">Sin Conexión</h1>
+        <h1 class="title online" style="display: none;">¡Conexión Restaurada!</h1>
+        
+        <p class="subtitle offline">
+            Parece que no tienes conexión a internet. No te preocupes, algunas funciones siguen disponibles mientras estás offline.
+        </p>
+        <p class="subtitle online" style="display: none;">
+            Tu conexión a internet ha sido restaurada. Ahora puedes acceder a todas las funciones de TechStore.
+        </p>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="location.reload()">
+                🔄 Intentar de Nuevo
+            </button>
+            <a href="/" class="btn online" style="display: none;">
+                🏠 Ir a TechStore
+            </a>
+            <button class="btn offline" onclick="showCachedProducts()">
+                📦 Ver Productos Guardados
+            </button>
+        </div>
+
+        <div class="features">
+            <h3>Disponible Offline:</h3>
+            <div class="features-grid">
+                <div class="feature">
+                    <span class="feature-icon">📱</span>
+                    <h4>Productos Guardados</h4>
+                    <p>Ve productos que has visitado recientemente</p>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🛒</span>
+                    <h4>Carrito Local</h4>
+                    <p>Tu carrito se guarda automáticamente</p>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">❤️</span>
+                    <h4>Lista de Deseos</h4>
+                    <p>Tus productos favoritos están aquí</p>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🔄</span>
+                    <h4>Sincronización</h4>
+                    <p>Todo se sincroniza cuando vuelvas online</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate particles
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            const particleCount = 30;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                particles.appendChild(particle);
+            }
+        }
+
+        // Check online status
+        function updateOnlineStatus() {
+            const status = document.getElementById('status');
+            const body = document.body;
+            
+            if (navigator.onLine) {
+                status.textContent = '✅ En Línea';
+                status.style.background = 'rgba(34, 197, 94, 0.9)';
+                body.classList.remove('offline');
+                body.classList.add('is-online');
+                
+                // Auto redirect after 3 seconds if online
+                setTimeout(() => {
+                    if (navigator.onLine) {
+                        window.location.href = '/';
+                    }
+                }, 3000);
+            } else {
+                status.textContent = '📶 Sin Conexión';
+                status.style.background = 'rgba(255, 107, 107, 0.9)';
+                body.classList.remove('is-online');
+                body.classList.add('offline');
+            }
+        }
+
+        // Show cached products
+        function showCachedProducts() {
+            if ('caches' in window) {
+                caches.open('techstore-products-v1').then(cache => {
+                    cache.keys().then(keys => {
+                        if (keys.length > 0) {
+                            // Redirect to main app which will show cached products
+                            window.location.href = '/?offline=true';
+                        } else {
+                            alert('No hay productos guardados offline. Visita algunos productos cuando tengas conexión para verlos aquí.');
+                        }
+                    });
+                });
+            } else {
+                alert('El almacenamiento offline no está disponible en este navegador.');
+            }
+        }
+
+        // Initialize
+        createParticles();
+        updateOnlineStatus();
+
+        // Listen for online/offline events
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        // Periodically check connection
+        setInterval(() => {
+            updateOnlineStatus();
+        }, 5000);
+
+        // PWA navigation handling
+        if (window.location.search.includes('standalone=true')) {
+            // Hide browser UI elements if launched as PWA
+            document.body.style.paddingTop = '0';
+        }
+
+        // Service Worker communication
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data.type === 'CACHE_UPDATED') {
+                    // Show notification that new content is available
+                    const notification = document.createElement('div');
+                    notification.innerHTML = `
+                        <div style="
+                            position: fixed;
+                            top: 20px;
+                            left: 20px;
+                            right: 20px;
+                            background: rgba(34, 197, 94, 0.9);
+                            color: white;
+                            padding: 1rem;
+                            border-radius: 8px;
+                            text-align: center;
+                            z-index: 1000;
+                            animation: slideInRight 0.3s ease-out;
+                        ">
+                            ✨ Nuevo contenido disponible offline
+                        </div>
+                    `;
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 3000);
+                }
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                location.reload();
+            }
+            if (e.key === 'h' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                window.location.href = '/';
+            }
+        });
+
+        // Touch gestures for mobile
+        let startY = 0;
+        document.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const endY = e.changedTouches[0].clientY;
+            const diff = startY - endY;
+            
+            // Pull to refresh gesture
+            if (diff < -100 && window.scrollY === 0) {
+                location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
