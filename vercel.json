@@ -21,11 +21,7 @@
       "src": "/(.*)",
       "dest": "/tech-store-frontend/$1"
     }
-    {
+  ],
   "buildCommand": "cd tech-store-frontend && npm run build",
   "outputDirectory": "tech-store-frontend/build"
-}
-  ],
-  "outputDirectory": "tech-store-frontend/build"
-
 }
