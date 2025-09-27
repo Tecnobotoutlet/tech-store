@@ -1,4 +1,0 @@
-{
-  "buildCommand": "cd tech-store-frontend && npm run build",
-  "outputDirectory": "tech-store-frontend/build"
-}
