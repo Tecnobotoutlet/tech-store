@@ -8,6 +8,7 @@ import OrderManager from './OrderManager';
 import CategoryManager from './CategoryManager';
 import UserManager from './UserManager';
 import AdminSettings from './AdminSettings';
+import IsolatedProductForm from './IsolatedProductForm';
 
 
 const AdminPanel = ({ onBackToStore }) => {
@@ -21,7 +22,7 @@ const AdminPanel = ({ onBackToStore }) => {
       case 'dashboard':
         return <AdminDashboard />;
       case 'products':
-        return <ProductManager />; 
+        return <IsolatedProductForm />; 
       case 'categories':
         return <CategoryManager />;
       case 'orders':
