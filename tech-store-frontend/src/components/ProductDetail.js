@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Star, Heart, ShoppingCart, Share2, Truck, Shield, RotateCcw, Minus, Plus, Check, AlertCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useProducts } from '../context/ProductContext'; // ← NUEVO
 import ImageGallery from './ImageGallery';
 import ProductSpecs from './ProductSpecs';
 import ProductReviews from './ProductReviews';
 import RelatedProducts from './RelatedProducts';
-import { sampleProducts, productReviews } from '../data/products';
+import { productReviews } from '../data/products';
 
 const ProductDetail = ({ productId, onBack, onProductClick }) => {
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -15,9 +16,10 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
   const [showNotification, setShowNotification] = useState(false);
 
   const { addToCart, toggleWishlist, isInWishlist } = useCart();
+  const { getProductById, getProductsByCategory } = useProducts(); // ← NUEVO
 
-  // Buscar el producto
-  const product = sampleProducts.find(p => p.id === parseInt(productId));
+  // ← CAMBIO: Usar contexto en lugar de sampleProducts
+  const product = getProductById(productId);
   const reviews = productReviews[productId] || [];
 
   useEffect(() => {
@@ -90,7 +92,8 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= product.stockQuantity) {
+    const maxStock = product.stockQuantity || product.stock || 0;
+    if (newQuantity >= 1 && newQuantity <= maxStock) {
       setQuantity(newQuantity);
     }
   };
@@ -104,8 +107,10 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
 
   const savings = calculateSavings();
   const isProductInWishlist = isInWishlist(product.id);
-  const relatedProducts = sampleProducts
-    .filter(p => p.category === product.category && p.id !== product.id)
+  
+  // ← CAMBIO: Usar función del contexto para productos relacionados
+  const relatedProducts = getProductsByCategory(product.category)
+    .filter(p => p.id !== product.id)
     .slice(0, 4);
 
   return (
@@ -133,7 +138,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
               <span>Volver</span>
             </button>
             <span className="text-gray-400">/</span>
-            <span className="text-blue-600">{product.category}</span>
+            <span className="text-blue-600">{product.categoryName || product.category}</span>
             <span className="text-gray-400">/</span>
             <span className="text-gray-900 font-medium truncate">{product.name}</span>
           </nav>
@@ -145,7 +150,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
           {/* Image Gallery */}
           <div>
-            <ImageGallery images={product.images} productName={product.name} />
+            <ImageGallery images={product.images || [product.image]} productName={product.name} />
           </div>
 
           {/* Product Info */}
@@ -164,16 +169,21 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
                     -{product.discount}%
                   </span>
                 )}
+                {product.isFromAdmin && (
+                  <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full font-semibold">
+                    ADMIN
+                  </span>
+                )}
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
               
               {/* Rating */}
               <div className="flex items-center space-x-4 mb-4">
                 <div className="flex items-center space-x-2">
-                  <div className="flex">{renderStars(product.rating)}</div>
-                  <span className="text-lg font-semibold text-gray-900">{product.rating}</span>
+                  <div className="flex">{renderStars(product.rating || 4)}</div>
+                  <span className="text-lg font-semibold text-gray-900">{product.rating || 4}</span>
                 </div>
-                <span className="text-gray-600">({product.totalReviews} reseñas)</span>
+                <span className="text-gray-600">({product.totalReviews || product.reviews || 0} reseñas)</span>
               </div>
             </div>
 
@@ -252,14 +262,14 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
                   </span>
                   <button
                     onClick={() => handleQuantityChange(1)}
-                    disabled={quantity >= product.stockQuantity}
+                    disabled={quantity >= (product.stockQuantity || product.stock || 0)}
                     className="p-3 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {product.stockQuantity} disponibles
+                  {product.stockQuantity || product.stock || 0} disponibles
                 </div>
               </div>
             </div>
@@ -269,7 +279,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
               <div className="flex space-x-4">
                 <button
                   onClick={handleAddToCart}
-                  disabled={!product.inStock || isAddingToCart}
+                  disabled={!(product.inStock !== false && (product.stockQuantity || product.stock || 0) > 0) || isAddingToCart}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
                 >
                   {isAddingToCart ? (
@@ -280,7 +290,11 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
                   ) : (
                     <>
                       <ShoppingCart className="w-5 h-5" />
-                      <span>{product.inStock ? 'Agregar al carrito' : 'No disponible'}</span>
+                      <span>
+                        {(product.inStock !== false && (product.stockQuantity || product.stock || 0) > 0) 
+                          ? 'Agregar al carrito' 
+                          : 'No disponible'}
+                      </span>
                     </>
                   )}
                 </button>
@@ -314,7 +328,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
                   <Shield className="w-6 h-6 text-green-600" />
                   <div>
                     <div className="font-semibold text-gray-900">Garantía</div>
-                    <div className="text-sm text-gray-600">{product.warranty}</div>
+                    <div className="text-sm text-gray-600">{product.warranty || '12 meses'}</div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -380,14 +394,14 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
             )}
             
             {activeTab === 'specs' && (
-              <ProductSpecs specifications={product.specifications} />
+              <ProductSpecs specifications={product.specifications || []} />
             )}
             
             {activeTab === 'reviews' && (
               <ProductReviews 
                 reviews={reviews} 
-                productRating={product.rating} 
-                totalReviews={product.totalReviews}
+                productRating={product.rating || 4} 
+                totalReviews={product.totalReviews || product.reviews || 0}
               />
             )}
           </div>
@@ -397,7 +411,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
         {relatedProducts.length > 0 && (
           <RelatedProducts 
             products={relatedProducts} 
-            category={product.category}
+            category={product.categoryName || product.category}
             onProductClick={onProductClick}
           />
         )}
