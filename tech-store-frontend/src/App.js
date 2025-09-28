@@ -380,7 +380,7 @@ function AppContent() {
         </div>
 
         <ProductFilters
-          products={products} //* ← CAMBIO: usar products del contexto */}
+          products={products} {/* ← CAMBIO: usar products del contexto */}
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
           selectedCategories={selectedCategories}
