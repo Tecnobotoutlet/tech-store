@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authService, getAuthToken, getCurrentUser } from '../services/authService';
 
 const AuthContext = createContext();
@@ -24,20 +24,22 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   }, []);
 
-  // Función para mostrar notificaciones
+  // Función para mostrar notificaciones - MEMOIZADA
   const showNotification = useCallback((message, type = 'success', duration = 5000) => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), duration);
+    // Usar useRef o ID para evitar múltiples timeouts
+    const timeoutId = setTimeout(() => setNotification(null), duration);
+    return () => clearTimeout(timeoutId);
   }, []);
 
-  // LOGOUT
+  // LOGOUT - MEMOIZADO
   const logout = useCallback(() => {
     clearAuthData();
     setAuthModalOpen(false);
     showNotification('Sesión cerrada correctamente', 'info');
   }, [clearAuthData, showNotification]);
 
-  // Verificación inicial de autenticación
+  // Verificación inicial de autenticación - OPTIMIZADA
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -76,9 +78,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     initializeAuth();
-  }, [clearAuthData]);
+  }, [clearAuthData]); // Solo se ejecuta una vez
 
-  // Listener para logout automático
+  // Listener para logout automático - MEMOIZADO
   useEffect(() => {
     const handleAutoLogout = () => {
       logout();
@@ -88,8 +90,8 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('auth:logout', handleAutoLogout);
   }, [logout]);
 
-  // LOGIN
-  const login = async (email, password) => {
+  // LOGIN - MEMOIZADO
+  const login = useCallback(async (email, password) => {
     setLoading(true);
     setError(null);
     
@@ -116,10 +118,10 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showNotification]);
 
-  // REGISTRO
-  const register = async (userData) => {
+  // REGISTRO - MEMOIZADO
+  const register = useCallback(async (userData) => {
     setLoading(true);
     setError(null);
     
@@ -146,10 +148,10 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showNotification]);
 
-  // ACTUALIZAR PERFIL
-  const updateProfile = async (updateData) => {
+  // ACTUALIZAR PERFIL - MEMOIZADO
+  const updateProfile = useCallback(async (updateData) => {
     if (!user || !isAuthenticated) {
       throw new Error('Usuario no autenticado');
     }
@@ -176,10 +178,10 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, isAuthenticated, showNotification]);
 
-  // CAMBIAR CONTRASEÑA
-  const changePassword = async (currentPassword, newPassword) => {
+  // CAMBIAR CONTRASEÑA - MEMOIZADO
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
     if (!user || !isAuthenticated) {
       throw new Error('Usuario no autenticado');
     }
@@ -202,10 +204,10 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, isAuthenticated, showNotification]);
 
-  // OBTENER ESTADÍSTICAS DEL USUARIO
-  const getUserStats = async () => {
+  // OBTENER ESTADÍSTICAS DEL USUARIO - MEMOIZADO
+  const getUserStats = useCallback(async () => {
     if (!user || !isAuthenticated) {
       return null;
     }
@@ -218,10 +220,10 @@ export const AuthProvider = ({ children }) => {
       console.warn('Error al obtener estadísticas:', error);
       return null;
     }
-  };
+  }, [user, isAuthenticated]);
 
-  // RECUPERAR CONTRASEÑA
-  const forgotPassword = async (email) => {
+  // RECUPERAR CONTRASEÑA - MEMOIZADO
+  const forgotPassword = useCallback(async (email) => {
     setLoading(true);
     setError(null);
     
@@ -237,9 +239,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showNotification]);
 
-  // FUNCIONES DE MODAL
+  // FUNCIONES DE MODAL - MEMOIZADAS
   const openLoginModal = useCallback(() => {
     setAuthModalType('login');
     setAuthModalOpen(true);
@@ -267,7 +269,7 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   }, []);
 
-  // FUNCIONES DE UTILIDAD
+  // FUNCIONES DE UTILIDAD - MEMOIZADAS
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -281,11 +283,11 @@ export const AuthProvider = ({ children }) => {
     return true;
   }, [isAuthenticated, openLoginModal]);
 
-  // VERIFICAR SI ES ADMIN
-  const isAdmin = user?.role === 'admin';
+  // VERIFICAR SI ES ADMIN - MEMOIZADO
+  const isAdmin = useMemo(() => user?.role === 'admin', [user]);
 
-  // Valor del contexto
-  const value = {
+  // CRÍTICO: Memoizar el objeto value para evitar re-renders
+  const value = useMemo(() => ({
     // Estados
     user,
     isAuthenticated,
@@ -318,7 +320,34 @@ export const AuthProvider = ({ children }) => {
     clearError,
     requireAuth,
     showNotification
-  };
+  }), [
+    // Estados
+    user,
+    isAuthenticated,
+    loading,
+    error,
+    notification,
+    isAdmin,
+    authModalOpen,
+    authModalType,
+    
+    // Funciones
+    login,
+    register,
+    logout,
+    updateProfile,
+    changePassword,
+    getUserStats,
+    forgotPassword,
+    openLoginModal,
+    openRegisterModal,
+    closeAuthModal,
+    switchToLogin,
+    switchToRegister,
+    clearError,
+    requireAuth,
+    showNotification
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
