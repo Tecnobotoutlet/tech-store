@@ -504,7 +504,7 @@ function App() {
     <AuthProvider>
       <ProductProvider>
         <CartProvider>
-          <PWAHelper />
+          //<PWAHelper />
           <AppContent />
         </CartProvider>
       </ProductProvider>
