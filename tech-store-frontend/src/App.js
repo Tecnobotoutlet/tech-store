@@ -1,7 +1,8 @@
-// src/App.js - Versión Mejorada y Profesional
+// src/App.js - Modificación para usar ProductContext
 import React, { useState, useEffect } from 'react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
+import { ProductProvider, useProducts } from './context/ProductContext'; // ← NUEVO
 import Header from './components/Header';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -14,22 +15,30 @@ import AuthModal from './components/AuthModal';
 import NotificationSystem from './components/NotificationSystem';
 import AdminPanel from './components/admin/AdminPanel';
 import useProductFilters from './hooks/useProductFilters';
-import { sampleProducts } from './data/products';
 import PWAHelper from './components/PWAHelper';
 
-function App() {
+// Componente interno que usa el contexto
+function AppContent() {
+  // ← CAMBIO: Usar contexto en lugar de importar productos
+  const { 
+    products, 
+    getFeaturedProducts, 
+    getNewProducts, 
+    getDiscountedProducts 
+  } = useProducts();
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [currentCategory, setCurrentCategory] = useState('all');
-  const [currentSection, setCurrentSection] = useState('home'); // 'ofertas', 'nuevos', 'marcas'
+  const [currentSection, setCurrentSection] = useState('home');
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [paymentData, setPaymentData] = useState(null);
   const [paymentResultType, setPaymentResultType] = useState('success');
 
-  // Filtros de productos
-  const productFilters = useProductFilters(sampleProducts);
+  // ← CAMBIO: Usar productos del contexto
+  const productFilters = useProductFilters(products);
   
-  const filteredProducts = productFilters?.filteredProducts || sampleProducts;
+  const filteredProducts = productFilters?.filteredProducts || products;
   const searchTerm = productFilters?.searchTerm || '';
   const selectedCategories = productFilters?.selectedCategories || [];
   const priceRange = productFilters?.priceRange || [0, 10000000];
@@ -44,10 +53,13 @@ function App() {
   const handleSortChange = productFilters?.handleSortChange || (() => {});
   const handleStockFilterChange = productFilters?.handleStockFilterChange || (() => {});
 
+  // ← CAMBIO: Usar funciones del contexto
+  const featuredProducts = getFeaturedProducts();
+  const newProducts = getNewProducts();
+  const saleProducts = getDiscountedProducts();
+
   // Productos filtrados por sección
   const getProductsBySection = () => {
-    let products = sampleProducts;
-    
     switch (currentSection) {
       case 'ofertas':
         return products.filter(product => product.discount > 0);
@@ -60,11 +72,7 @@ function App() {
     }
   };
 
-  const featuredProducts = sampleProducts.filter(product => product.isFeatured);
-  const newProducts = sampleProducts.filter(product => product.isNew);
-  const saleProducts = sampleProducts.filter(product => product.discount > 0);
-
-  // Handlers de navegación
+  // Handlers de navegación (mantener igual)
   const handleCartClick = () => setIsCartOpen(true);
   const handleCartClose = () => setIsCartOpen(false);
   
@@ -80,7 +88,6 @@ function App() {
     setCurrentCategory(category);
     setCurrentSection(section);
     
-    // Aplicar filtros si hay categoría específica
     if (category !== 'all') {
       handleCategoryChange([category]);
     } else {
@@ -132,7 +139,7 @@ function App() {
     alert('Funcionalidad de seguimiento de pedidos próximamente');
   };
 
-  // Render Home View Mejorado
+  // Todos los renderView mantienen el mismo código, solo cambio en las fuentes de datos
   const renderHomeView = () => (
     <main>
       {/* Hero Section Mejorado */}
@@ -186,12 +193,12 @@ function App() {
           
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
             {[
-              { name: 'Tecnología', icon: '📱', category: 'Smartphones' },
-              { name: 'Hogar', icon: '🏠', category: 'Hogar' },
-              { name: 'Deportes', icon: '⚽', category: 'Deportes' },
-              { name: 'Moda', icon: '👕', category: 'Moda' },
-              { name: 'Libros', icon: '📚', category: 'Libros' },
-              { name: 'Salud', icon: '💊', category: 'Salud' }
+              { name: 'Tecnología', icon: '📱', category: 'tecnologia' },
+              { name: 'Hogar', icon: '🏠', category: 'hogar' },
+              { name: 'Deportes', icon: '⚽', category: 'deportes' },
+              { name: 'Moda', icon: '👕', category: 'moda' },
+              { name: 'Libros', icon: '📚', category: 'libros' },
+              { name: 'Salud', icon: '💊', category: 'salud' }
             ].map((cat, index) => (
               <button
                 key={index}
@@ -341,7 +348,6 @@ function App() {
     </main>
   );
 
-  // Resto de renders permanecen igual...
   const renderCatalogView = () => (
     <main className="py-8">
       <div className="container mx-auto px-4">
@@ -374,7 +380,7 @@ function App() {
         </div>
 
         <ProductFilters
-          products={sampleProducts}
+          products={products} //* ← CAMBIO: usar products del contexto */}
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
           selectedCategories={selectedCategories}
@@ -401,6 +407,7 @@ function App() {
     </main>
   );
 
+  // Resto de renders mantienen el código igual...
   const renderProductView = () => (
     <ProductDetail 
       productId={selectedProductId}
@@ -430,90 +437,98 @@ function App() {
     <AdminPanel onBackToStore={handleBackFromAdmin} />
   );
 
-  // Main Render
   return (
-    <AuthProvider>
-      <CartProvider>
-        <PWAHelper /> 
-        <div className="App min-h-screen bg-gray-50">
-          {currentView !== 'admin' && (
-            <Header 
-              onCartClick={handleCartClick}
-              onSearch={handleSearchChange}
-              searchQuery={searchTerm}
-              onAdminClick={handleViewAdmin}
-              onCategoryClick={handleViewCatalog}
-              onOffersClick={() => handleViewCatalog('all', 'ofertas')}
-              onNewProductsClick={() => handleViewCatalog('all', 'nuevos')}
-              onBrandsClick={() => handleViewCatalog()}
-              onSupportClick={() => alert('Soporte próximamente')}
-              onHomeClick={handleViewHome}
-            />
-          )}
-          
-          {currentView !== 'admin' && (
-            <Cart 
-              isOpen={isCartOpen} 
-              onClose={handleCartClose} 
-              onCheckout={handleCheckout} 
-            />
-          )}
-          
-          <AuthModal />
-          <NotificationSystem />
-          
-          {currentView === 'home' && renderHomeView()}
-          {currentView === 'catalog' && renderCatalogView()}
-          {currentView === 'product' && renderProductView()}
-          {currentView === 'checkout' && renderCheckoutView()}
-          {currentView === 'payment-result' && renderPaymentResultView()}
-          {currentView === 'admin' && renderAdminView()}
+    <div className="App min-h-screen bg-gray-50">
+      {currentView !== 'admin' && (
+        <Header 
+          onCartClick={handleCartClick}
+          onSearch={handleSearchChange}
+          searchQuery={searchTerm}
+          onAdminClick={handleViewAdmin}
+          onCategoryClick={handleViewCatalog}
+          onOffersClick={() => handleViewCatalog('all', 'ofertas')}
+          onNewProductsClick={() => handleViewCatalog('all', 'nuevos')}
+          onBrandsClick={() => handleViewCatalog()}
+          onSupportClick={() => alert('Soporte próximamente')}
+          onHomeClick={handleViewHome}
+        />
+      )}
+      
+      {currentView !== 'admin' && (
+        <Cart 
+          isOpen={isCartOpen} 
+          onClose={handleCartClose} 
+          onCheckout={handleCheckout} 
+        />
+      )}
+      
+      <AuthModal />
+      <NotificationSystem />
+      
+      {currentView === 'home' && renderHomeView()}
+      {currentView === 'catalog' && renderCatalogView()}
+      {currentView === 'product' && renderProductView()}
+      {currentView === 'checkout' && renderCheckoutView()}
+      {currentView === 'payment-result' && renderPaymentResultView()}
+      {currentView === 'admin' && renderAdminView()}
 
-          {!['admin', 'checkout', 'payment-result'].includes(currentView) && (
-            <footer className="bg-slate-900 text-white py-12">
-              <div className="container mx-auto px-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                  <div>
-                    <h3 className="text-xl font-bold mb-4">TechStore</h3>
-                    <p className="text-gray-400">
-                      Tu tienda de confianza para productos de todas las categorías.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-4">Categorías</h4>
-                    <ul className="space-y-2 text-gray-400">
-                      <li><button onClick={() => handleViewCatalog('Tecnología')} className="hover:text-white transition-colors">Tecnología</button></li>
-                      <li><button onClick={() => handleViewCatalog('Hogar')} className="hover:text-white transition-colors">Hogar</button></li>
-                      <li><button onClick={() => handleViewCatalog('Deportes')} className="hover:text-white transition-colors">Deportes</button></li>
-                      <li><button onClick={() => handleViewCatalog('Moda')} className="hover:text-white transition-colors">Moda</button></li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-4">Ayuda</h4>
-                    <ul className="space-y-2 text-gray-400">
-                      <li>Envíos</li>
-                      <li>Devoluciones</li>
-                      <li>Garantías</li>
-                      <li>Soporte</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-4">Contacto</h4>
-                    <div className="space-y-2 text-gray-400">
-                      <p>📞 +57 300 123 4567</p>
-                      <p>📧 contacto@techstore.com</p>
-                      <p>📍 Bogotá, Colombia</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-                  <p>&copy; 2025 TechStore. Todos los derechos reservados.</p>
+      {!['admin', 'checkout', 'payment-result'].includes(currentView) && (
+        <footer className="bg-slate-900 text-white py-12">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div>
+                <h3 className="text-xl font-bold mb-4">TechStore</h3>
+                <p className="text-gray-400">
+                  Tu tienda de confianza para productos de todas las categorías.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Categorías</h4>
+                <ul className="space-y-2 text-gray-400">
+                  <li><button onClick={() => handleViewCatalog('tecnologia')} className="hover:text-white transition-colors">Tecnología</button></li>
+                  <li><button onClick={() => handleViewCatalog('hogar')} className="hover:text-white transition-colors">Hogar</button></li>
+                  <li><button onClick={() => handleViewCatalog('deportes')} className="hover:text-white transition-colors">Deportes</button></li>
+                  <li><button onClick={() => handleViewCatalog('moda')} className="hover:text-white transition-colors">Moda</button></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Ayuda</h4>
+                <ul className="space-y-2 text-gray-400">
+                  <li>Envíos</li>
+                  <li>Devoluciones</li>
+                  <li>Garantías</li>
+                  <li>Soporte</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Contacto</h4>
+                <div className="space-y-2 text-gray-400">
+                  <p>📞 +57 300 123 4567</p>
+                  <p>📧 contacto@techstore.com</p>
+                  <p>📍 Bogotá, Colombia</p>
                 </div>
               </div>
-            </footer>
-          )}
-        </div>
-      </CartProvider>
+            </div>
+            <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+              <p>&copy; 2025 TechStore. Todos los derechos reservados.</p>
+            </div>
+          </div>
+        </footer>
+      )}
+    </div>
+  );
+}
+
+// ← CAMBIO: Envolver en ProductProvider
+function App() {
+  return (
+    <AuthProvider>
+      <ProductProvider> {/* ← NUEVO: Envolver en ProductProvider */}
+        <CartProvider>
+          <PWAHelper />
+          <AppContent /> {/* ← Componente que usa el contexto */}
+        </CartProvider>
+      </ProductProvider>
     </AuthProvider>
   );
 }

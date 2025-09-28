@@ -1,5 +1,6 @@
-// src/components/admin/ProductManager.js
+// src/components/admin/ProductManager.js - Modificado para usar ProductContext
 import React, { useState, useEffect } from 'react';
+import { useProducts } from '../../context/ProductContext'; // ← NUEVO
 import {
   Plus,
   Search,
@@ -20,59 +21,25 @@ import {
 } from 'lucide-react';
 
 const ProductManager = () => {
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: 'iPhone 15 Pro Max',
-      description: 'El iPhone más avanzado con chip A17 Pro y cámara de 48MP',
-      price: 4500000,
-      category: 'Smartphones',
-      brand: 'Apple',
-      stock: 15,
-      image: '/api/placeholder/300/300',
-      isActive: true,
-      isFeatured: true,
-      isNew: false,
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'MacBook Air M2',
-      description: 'Laptop ultradelgada con chip M2 y pantalla Liquid Retina',
-      price: 3200000,
-      category: 'Laptops',
-      brand: 'Apple',
-      stock: 8,
-      image: '/api/placeholder/300/300',
-      isActive: true,
-      isFeatured: false,
-      isNew: true,
-      createdAt: '2024-01-10'
-    },
-    {
-      id: 3,
-      name: 'Samsung Galaxy S24 Ultra',
-      description: 'Smartphone premium con S Pen y cámara de 200MP',
-      price: 4200000,
-      category: 'Smartphones',
-      brand: 'Samsung',
-      stock: 2,
-      image: '/api/placeholder/300/300',
-      isActive: true,
-      isFeatured: true,
-      isNew: false,
-      createdAt: '2024-01-08'
-    }
-  ]);
+  // ← CAMBIO: Usar contexto en lugar de useState local
+  const { 
+    products: allProducts, 
+    addProduct, 
+    updateProduct, 
+    deleteProduct,
+    getProductStats
+  } = useProducts();
+
+  // Filtrar solo productos que pueden ser editados por el admin
+  const products = allProducts; // Mostrar todos los productos pero solo permitir editar los del admin
 
   const [categories] = useState([
-    'Smartphones',
-    'Laptops',
-    'Tablets',
-    'Audio',
-    'Gaming',
-    'Accesorios',
-    'Smartwatch'
+    'tecnologia',
+    'hogar', 
+    'deportes',
+    'salud',
+    'moda',
+    'libros'
   ]);
 
   const [brands] = useState([
@@ -83,7 +50,11 @@ const ProductManager = () => {
     'Sony',
     'HP',
     'Dell',
-    'Asus'
+    'Asus',
+    'Nike',
+    'Adidas',
+    'IKEA',
+    'Centrum'
   ]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,10 +71,12 @@ const ProductManager = () => {
     category: '',
     brand: '',
     stock: '',
+    stockQuantity: '', // Para compatibilidad con el formato existente
     image: '',
     isActive: true,
     isFeatured: false,
-    isNew: false
+    isNew: false,
+    inStock: true
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -118,7 +91,9 @@ const ProductManager = () => {
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || product.category === selectedCategory;
+    const matchesCategory = !selectedCategory || 
+                           product.category === selectedCategory || 
+                           product.categoryName?.toLowerCase().includes(selectedCategory.toLowerCase());
     const matchesBrand = !selectedBrand || product.brand === selectedBrand;
     
     return matchesSearch && matchesCategory && matchesBrand;
@@ -131,9 +106,9 @@ const ProductManager = () => {
       case 'price':
         return a.price - b.price;
       case 'stock':
-        return a.stock - b.stock;
+        return (a.stockQuantity || a.stock || 0) - (b.stockQuantity || b.stock || 0);
       case 'created':
-        return new Date(b.createdAt) - new Date(a.createdAt);
+        return new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0);
       default:
         return 0;
     }
@@ -146,18 +121,36 @@ const ProductManager = () => {
       description: '',
       price: '',
       category: '',
+      categoryName: '',
+      subcategory: '',
+      subcategoryName: '',
       brand: '',
       stock: '',
+      stockQuantity: '',
       image: '',
       isActive: true,
       isFeatured: false,
-      isNew: false
+      isNew: false,
+      inStock: true,
+      discount: 0,
+      rating: 0,
+      reviews: 0,
+      totalReviews: 0,
+      tags: [],
+      warranty: '',
+      shipping: 'Envío gratis en 24-48 horas'
     });
     setFormErrors({});
     setShowModal(true);
   };
 
   const handleEditProduct = (product) => {
+    // Solo permitir editar productos creados por el admin
+    if (!product.isFromAdmin) {
+      alert('Solo puedes editar productos que hayas creado en el panel administrativo.');
+      return;
+    }
+    
     setModalMode('edit');
     setSelectedProduct(product);
     setFormData({
@@ -165,12 +158,21 @@ const ProductManager = () => {
       description: product.description,
       price: product.price.toString(),
       category: product.category,
+      categoryName: product.categoryName || '',
+      subcategory: product.subcategory || '',
+      subcategoryName: product.subcategoryName || '',
       brand: product.brand,
-      stock: product.stock.toString(),
+      stock: (product.stock || product.stockQuantity || 0).toString(),
+      stockQuantity: (product.stockQuantity || product.stock || 0).toString(),
       image: product.image,
-      isActive: product.isActive,
-      isFeatured: product.isFeatured,
-      isNew: product.isNew
+      isActive: product.isActive !== false,
+      isFeatured: product.isFeatured || false,
+      isNew: product.isNew || false,
+      inStock: product.inStock !== false,
+      discount: product.discount || 0,
+      rating: product.rating || 0,
+      warranty: product.warranty || '',
+      shipping: product.shipping || 'Envío gratis en 24-48 horas'
     });
     setFormErrors({});
     setShowModal(true);
@@ -183,8 +185,14 @@ const ProductManager = () => {
   };
 
   const handleDeleteProduct = (product) => {
+    // Solo permitir eliminar productos creados por el admin
+    if (!product.isFromAdmin) {
+      alert('Solo puedes eliminar productos que hayas creado en el panel administrativo.');
+      return;
+    }
+    
     if (window.confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
-      setProducts(products.filter(p => p.id !== product.id));
+      deleteProduct(product.id); // ← CAMBIO: Usar función del contexto
     }
   };
 
@@ -196,7 +204,7 @@ const ProductManager = () => {
     if (!formData.price || formData.price <= 0) errors.price = 'El precio debe ser mayor a 0';
     if (!formData.category) errors.category = 'La categoría es requerida';
     if (!formData.brand) errors.brand = 'La marca es requerida';
-    if (!formData.stock || formData.stock < 0) errors.stock = 'El stock debe ser 0 o mayor';
+    if (!formData.stockQuantity || formData.stockQuantity < 0) errors.stockQuantity = 'El stock debe ser 0 o mayor';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -206,26 +214,53 @@ const ProductManager = () => {
     if (!validateForm()) return;
 
     const productData = {
-      ...formData,
+      name: formData.name,
+      description: formData.description,
       price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
-      updatedAt: new Date().toISOString()
+      category: formData.category,
+      categoryName: getCategoryDisplayName(formData.category),
+      subcategory: formData.subcategory || formData.category,
+      subcategoryName: formData.subcategoryName || getCategoryDisplayName(formData.category),
+      brand: formData.brand,
+      stock: parseInt(formData.stockQuantity),
+      stockQuantity: parseInt(formData.stockQuantity),
+      image: formData.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=500&q=80',
+      isActive: formData.isActive,
+      isFeatured: formData.isFeatured,
+      isNew: formData.isNew,
+      inStock: formData.inStock && parseInt(formData.stockQuantity) > 0,
+      discount: formData.discount || 0,
+      rating: formData.rating || 4.0,
+      reviews: formData.reviews || 0,
+      totalReviews: formData.totalReviews || 0,
+      tags: [],
+      warranty: formData.warranty || '12 meses de garantía',
+      shipping: formData.shipping || 'Envío gratis en 24-48 horas',
+      specifications: [],
+      features: [],
+      variants: []
     };
 
     if (modalMode === 'add') {
-      const newProduct = {
-        ...productData,
-        id: Math.max(...products.map(p => p.id)) + 1,
-        createdAt: new Date().toISOString()
-      };
-      setProducts([...products, newProduct]);
+      addProduct(productData); // ← CAMBIO: Usar función del contexto
     } else if (modalMode === 'edit') {
-      setProducts(products.map(p => 
-        p.id === selectedProduct.id ? { ...p, ...productData } : p
-      ));
+      updateProduct(selectedProduct.id, productData); // ← CAMBIO: Usar función del contexto
     }
 
     setShowModal(false);
+  };
+
+  // Función helper para obtener nombres de categorías
+  const getCategoryDisplayName = (category) => {
+    const categoryMap = {
+      'tecnologia': 'Tecnología',
+      'hogar': 'Hogar y Jardín',
+      'deportes': 'Deportes y Fitness',
+      'salud': 'Salud y Belleza',
+      'moda': 'Moda y Ropa',
+      'libros': 'Libros y Media'
+    };
+    return categoryMap[category] || category;
   };
 
   const handleInputChange = (e) => {
@@ -235,13 +270,23 @@ const ProductManager = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
 
+    // Sincronizar stock y stockQuantity
+    if (name === 'stockQuantity') {
+      setFormData(prev => ({
+        ...prev,
+        stock: value,
+        inStock: parseInt(value) > 0
+      }));
+    }
+
     // Limpiar error del campo
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
-  const getStockStatus = (stock) => {
+  const getStockStatus = (product) => {
+    const stock = product.stockQuantity || product.stock || 0;
     if (stock === 0) return { label: 'Sin Stock', color: 'bg-red-100 text-red-800' };
     if (stock <= 5) return { label: 'Stock Bajo', color: 'bg-yellow-100 text-yellow-800' };
     return { label: 'En Stock', color: 'bg-green-100 text-green-800' };
@@ -286,11 +331,11 @@ const ProductManager = () => {
                     </div>
                     <div>
                       <span className="text-sm text-gray-500">Stock</span>
-                      <p className="font-semibold">{selectedProduct?.stock} unidades</p>
+                      <p className="font-semibold">{selectedProduct?.stockQuantity || selectedProduct?.stock || 0} unidades</p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-500">Categoría</span>
-                      <p className="font-medium">{selectedProduct?.category}</p>
+                      <p className="font-medium">{selectedProduct?.categoryName || selectedProduct?.category}</p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-500">Marca</span>
@@ -298,7 +343,7 @@ const ProductManager = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    {selectedProduct?.isActive && (
+                    {selectedProduct?.isActive !== false && (
                       <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Activo</span>
                     )}
                     {selectedProduct?.isFeatured && (
@@ -306,6 +351,9 @@ const ProductManager = () => {
                     )}
                     {selectedProduct?.isNew && (
                       <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">Nuevo</span>
+                    )}
+                    {selectedProduct?.isFromAdmin && (
+                      <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">Admin</span>
                     )}
                   </div>
                 </div>
@@ -388,7 +436,7 @@ const ProductManager = () => {
                   >
                     <option value="">Seleccionar categoría</option>
                     {categories.map(category => (
-                      <option key={category} value={category}>{category}</option>
+                      <option key={category} value={category}>{getCategoryDisplayName(category)}</option>
                     ))}
                   </select>
                   {formErrors.category && (
@@ -424,16 +472,16 @@ const ProductManager = () => {
                   </label>
                   <input
                     type="number"
-                    name="stock"
-                    value={formData.stock}
+                    name="stockQuantity"
+                    value={formData.stockQuantity}
                     onChange={handleInputChange}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      formErrors.stock ? 'border-red-500' : 'border-gray-300'
+                      formErrors.stockQuantity ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="10"
                   />
-                  {formErrors.stock && (
-                    <p className="text-red-500 text-sm mt-1">{formErrors.stock}</p>
+                  {formErrors.stockQuantity && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.stockQuantity}</p>
                   )}
                 </div>
               </div>
@@ -561,7 +609,7 @@ const ProductManager = () => {
             >
               <option value="">Todas las categorías</option>
               {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+                <option key={category} value={category}>{getCategoryDisplayName(category)}</option>
               ))}
             </select>
           </div>
@@ -632,7 +680,7 @@ const ProductManager = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedProducts.map((product) => {
-                const stockStatus = getStockStatus(product.stock);
+                const stockStatus = getStockStatus(product);
                 
                 return (
                   <tr key={product.id} className="hover:bg-gray-50">
@@ -651,7 +699,7 @@ const ProductManager = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
-                        {product.category}
+                        {product.categoryName || product.category}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -659,12 +707,12 @@ const ProductManager = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs rounded-full ${stockStatus.color}`}>
-                        {product.stock} unidades
+                        {product.stockQuantity || product.stock || 0} unidades
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex space-x-1">
-                        {product.isActive && (
+                        {product.isActive !== false && (
                           <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                             Activo
                           </span>
@@ -679,6 +727,11 @@ const ProductManager = () => {
                             Nuevo
                           </span>
                         )}
+                        {product.isFromAdmin && (
+                          <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
+                            Admin
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -691,13 +744,15 @@ const ProductManager = () => {
                         </button>
                         <button
                           onClick={() => handleEditProduct(product)}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          className={`${product.isFromAdmin ? 'text-indigo-600 hover:text-indigo-900' : 'text-gray-400 cursor-not-allowed'}`}
+                          disabled={!product.isFromAdmin}
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product)}
-                          className="text-red-600 hover:text-red-900"
+                          className={`${product.isFromAdmin ? 'text-red-600 hover:text-red-900' : 'text-gray-400 cursor-not-allowed'}`}
+                          disabled={!product.isFromAdmin}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
