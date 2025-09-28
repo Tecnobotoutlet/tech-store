@@ -22,7 +22,7 @@ const AdminPanel = ({ onBackToStore }) => {
       case 'dashboard':
         return <AdminDashboard />;
       case 'products':
-        return <IsolatedProductForm />; 
+        return <ProductManager />; 
       case 'categories':
         return <CategoryManager />;
       case 'orders':
