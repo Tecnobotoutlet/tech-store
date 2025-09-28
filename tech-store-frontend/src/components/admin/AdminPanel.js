@@ -13,6 +13,27 @@ const AdminPanel = ({ onBackToStore }) => {
   const { isAuthenticated, isAdmin } = useAuth();
   const [currentSection, setCurrentSection] = useState('dashboard');
 
+  // TODOS LOS HOOKS DEBEN ESTAR ANTES DE CUALQUIER RETURN
+  // Función memoizada para evitar re-creación
+  const renderCurrentSection = useCallback(() => {
+    switch (currentSection) {
+      case 'dashboard':
+        return <AdminDashboard />;
+      case 'products':
+        return <ProductManager />;
+      case 'categories':
+        return <CategoryManager />;
+      case 'orders':
+        return <OrderManager />;
+      case 'customers':
+        return <UserManager />;
+      case 'settings':
+        return <AdminSettings />;
+      default:
+        return <AdminDashboard />;
+    }
+  }, [currentSection]);
+
   // Verificar si el usuario es admin
   if (!isAuthenticated || !isAdmin) {
     return (
@@ -39,26 +60,6 @@ const AdminPanel = ({ onBackToStore }) => {
       </div>
     );
   }
-
-  // CORRECCIÓN: Función memoizada para evitar re-creación
-  const renderCurrentSection = useCallback(() => {
-    switch (currentSection) {
-      case 'dashboard':
-        return <AdminDashboard />;
-      case 'products':
-        return <ProductManager />;
-      case 'categories':
-        return <CategoryManager />;
-      case 'orders':
-        return <OrderManager />;
-      case 'customers':
-        return <UserManager />;
-      case 'settings':
-        return <AdminSettings />;
-      default:
-        return <AdminDashboard />;
-    }
-  }, [currentSection]);
 
   return (
     <AdminLayout 
