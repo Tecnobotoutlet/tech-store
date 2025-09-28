@@ -1,6 +1,7 @@
 // src/components/admin/ProductManager.js - Formulario Corregido
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
+import FocusedInput from '../FocusedInput';
 import {
   Plus,
   Search,
@@ -548,7 +549,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Nombre del Producto *
                     </label>
-                    <input
+                    <FocusedInput
                       type="text"
                       name="name"
                       value={formData.name}
@@ -567,7 +568,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Modelo
                     </label>
-                    <input
+                    <FocusedInput
                       type="text"
                       name="model"
                       value={formData.model}
@@ -606,7 +607,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Precio *
                     </label>
-                    <input
+                    <FocusedInput
                       type="number"
                       name="price"
                       value={formData.price}
@@ -625,7 +626,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Precio Original
                     </label>
-                    <input
+                    <FocusedInput
                       type="number"
                       name="originalPrice"
                       value={formData.originalPrice}
@@ -640,7 +641,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Stock *
                     </label>
-                    <input
+                    <FocusedInput
                       type="number"
                       name="stockQuantity"
                       value={formData.stockQuantity}
@@ -659,7 +660,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Rating
                     </label>
-                    <input
+                    <FocusedInput
                       type="number"
                       name="rating"
                       value={formData.rating}
@@ -729,7 +730,7 @@ const ProductManager = () => {
                 <div className="space-y-3">
                   {formData.images.map((image, index) => (
                     <div key={index} className="flex items-center space-x-3">
-                      <input
+                      <FocusedInput
                         type="url"
                         value={image}
                         onChange={(e) => updateImageField(index, e.target.value)}
@@ -806,7 +807,7 @@ const ProductManager = () => {
                     ))}
                   </select>
                   
-                  <input
+                  <FocusedInput
                     type="text"
                     value={newSpecification.label}
                     onChange={(e) => setNewSpecification(prev => ({ ...prev, label: e.target.value }))}
@@ -814,7 +815,7 @@ const ProductManager = () => {
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   
-                  <input
+                  <FocusedInput
                     type="text"
                     value={newSpecification.value}
                     onChange={(e) => setNewSpecification(prev => ({ ...prev, value: e.target.value }))}
@@ -860,7 +861,7 @@ const ProductManager = () => {
 
                 {/* Agregar nueva característica */}
                 <div className="flex space-x-3">
-                  <input
+                  <FocusedInput
                     type="text"
                     value={newFeature}
                     onChange={(e) => setNewFeature(e.target.value)}
@@ -917,7 +918,7 @@ const ProductManager = () => {
 
                 {/* Agregar nueva variante */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <input
+                  <FocusedInput
                     type="text"
                     value={newVariant.name}
                     onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
@@ -926,7 +927,7 @@ const ProductManager = () => {
                   />
                   
                   <div className="flex items-center space-x-2">
-                    <input
+                    <FocusedInput
                       type="color"
                       value={newVariant.color}
                       onChange={(e) => setNewVariant(prev => ({ ...prev, color: e.target.value }))}
@@ -936,7 +937,7 @@ const ProductManager = () => {
                   </div>
                   
                   <label className="flex items-center space-x-2">
-                    <input
+                    <FocusedInput
                       type="checkbox"
                       checked={newVariant.available}
                       onChange={(e) => setNewVariant(prev => ({ ...prev, available: e.target.checked }))}
@@ -982,7 +983,7 @@ const ProductManager = () => {
 
                 {/* Agregar nuevo tag */}
                 <div className="flex space-x-3">
-                  <input
+                  <FocusedInput
                     type="text"
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
@@ -1009,7 +1010,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Garantía
                     </label>
-                    <input
+                    <FocusedInput
                       type="text"
                       name="warranty"
                       value={formData.warranty}
@@ -1023,7 +1024,7 @@ const ProductManager = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Información de Envío
                     </label>
-                    <input
+                    <FocusedInput
                       type="text"
                       name="shipping"
                       value={formData.shipping}
@@ -1040,7 +1041,7 @@ const ProductManager = () => {
                 <h4 className="text-lg font-semibold mb-4">Estados del Producto</h4>
                 <div className="flex flex-wrap gap-6">
                   <label className="flex items-center">
-                    <input
+                    <FocusedInput
                       type="checkbox"
                       name="isActive"
                       checked={formData.isActive}
@@ -1051,7 +1052,7 @@ const ProductManager = () => {
                   </label>
 
                   <label className="flex items-center">
-                    <input
+                    <FocusedInput
                       type="checkbox"
                       name="isFeatured"
                       checked={formData.isFeatured}
@@ -1062,7 +1063,7 @@ const ProductManager = () => {
                   </label>
 
                   <label className="flex items-center">
-                    <input
+                    <FocusedInput
                       type="checkbox"
                       name="isNew"
                       checked={formData.isNew}
@@ -1129,7 +1130,7 @@ const ProductManager = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
             <div className="relative">
               <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              <input
+              <FocusedInput
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
