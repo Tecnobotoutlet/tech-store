@@ -15,7 +15,7 @@ import AuthModal from './components/AuthModal';
 import NotificationSystem from './components/NotificationSystem';
 import AdminPanel from './components/admin/AdminPanel';
 import useProductFilters from './hooks/useProductFilters';
-//import PWAHelper from './components/PWAHelper';
+import PWAHelper from './components/PWAHelper';
 
 // Componente interno que usa el contexto
 function AppContent() {
@@ -504,7 +504,7 @@ function App() {
     <AuthProvider>
       <ProductProvider>
         <CartProvider>
-          //<PWAHelper />
+          <PWAHelper />
           <AppContent />
         </CartProvider>
       </ProductProvider>
