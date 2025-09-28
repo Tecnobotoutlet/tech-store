@@ -1,5 +1,5 @@
 // src/context/ProductContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { sampleProducts } from '../data/products';
 
 const ProductContext = createContext();
@@ -36,8 +36,8 @@ export const ProductProvider = ({ children }) => {
     localStorage.setItem('adminProducts', JSON.stringify(adminProducts));
   }, [products]);
 
-  // Funciones para manejar productos
-  const addProduct = (productData) => {
+  // Funciones memoizadas para manejar productos
+  const addProduct = useCallback((productData) => {
     const maxId = Math.max(...products.map(p => p.id), 0);
     const newProduct = {
       ...productData,
@@ -47,46 +47,46 @@ export const ProductProvider = ({ children }) => {
     };
     setProducts(prev => [...prev, newProduct]);
     return newProduct;
-  };
+  }, [products]);
 
-  const updateProduct = (productId, productData) => {
+  const updateProduct = useCallback((productId, productData) => {
     setProducts(prev => prev.map(product => 
       product.id === productId 
         ? { ...product, ...productData, updatedAt: new Date().toISOString() }
         : product
     ));
-  };
+  }, []);
 
-  const deleteProduct = (productId) => {
+  const deleteProduct = useCallback((productId) => {
     setProducts(prev => prev.filter(product => product.id !== productId));
-  };
+  }, []);
 
-  const getProductById = (id) => {
+  const getProductById = useCallback((id) => {
     return products.find(product => product.id === parseInt(id));
-  };
+  }, [products]);
 
-  const getProductsByCategory = (categoryId, subcategoryId = null) => {
+  const getProductsByCategory = useCallback((categoryId, subcategoryId = null) => {
     return products.filter(product => {
       if (subcategoryId) {
         return product.category === categoryId && product.subcategory === subcategoryId;
       }
       return product.category === categoryId;
     });
-  };
+  }, [products]);
 
-  const getFeaturedProducts = () => {
+  const getFeaturedProducts = useCallback(() => {
     return products.filter(product => product.isFeatured);
-  };
+  }, [products]);
 
-  const getNewProducts = () => {
+  const getNewProducts = useCallback(() => {
     return products.filter(product => product.isNew);
-  };
+  }, [products]);
 
-  const getDiscountedProducts = () => {
+  const getDiscountedProducts = useCallback(() => {
     return products.filter(product => product.discount > 0);
-  };
+  }, [products]);
 
-  const searchProducts = (searchTerm) => {
+  const searchProducts = useCallback((searchTerm) => {
     const term = searchTerm.toLowerCase();
     return products.filter(product =>
       product.name.toLowerCase().includes(term) ||
@@ -96,10 +96,10 @@ export const ProductProvider = ({ children }) => {
       product.subcategoryName?.toLowerCase().includes(term) ||
       (product.tags && product.tags.some(tag => tag.toLowerCase().includes(term)))
     );
-  };
+  }, [products]);
 
-  // Estadísticas para el admin
-  const getProductStats = () => {
+  // Estadísticas para el admin - memoizada
+  const getProductStats = useCallback(() => {
     const totalProducts = products.length;
     const adminProducts = products.filter(p => p.isFromAdmin).length;
     const staticProducts = products.filter(p => !p.isFromAdmin).length;
@@ -127,9 +127,10 @@ export const ProductProvider = ({ children }) => {
       discounted: discountedProducts,
       byCategory: categoryStats
     };
-  };
+  }, [products]);
 
-  const value = {
+  // CRÍTICO: Memoizar el objeto value para evitar re-renders
+  const value = useMemo(() => ({
     products,
     addProduct,
     updateProduct,
@@ -141,7 +142,19 @@ export const ProductProvider = ({ children }) => {
     getDiscountedProducts,
     searchProducts,
     getProductStats
-  };
+  }), [
+    products,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    getProductById,
+    getProductsByCategory,
+    getFeaturedProducts,
+    getNewProducts,
+    getDiscountedProducts,
+    searchProducts,
+    getProductStats
+  ]);
 
   return (
     <ProductContext.Provider value={value}>
