@@ -1,5 +1,5 @@
 // src/components/admin/AdminPanel.js
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminLayout from './AdminLayout';
 import AdminDashboard from './AdminDashboard';
@@ -40,24 +40,20 @@ const AdminPanel = ({ onBackToStore }) => {
     );
   }
 
-  const renderCurrentSection = () => {
-    switch (currentSection) {
-      case 'dashboard':
-        return <AdminDashboard />;
-      case 'products':
-        return <ProductManager />;
-      case 'categories':
-        return <CategoryManager />;
-      case 'orders':
-        return <OrderManager />;
-      case 'customers':        
-      return <UserManager />;
-    case 'settings':          
-      return <AdminSettings />;
-      default:
-        return <AdminDashboard />;
-    }
-  };
+  // CORRECCIÓN: Memoizar los componentes para evitar re-montaje
+  const sectionComponents = useMemo(() => ({
+    dashboard: <AdminDashboard />,
+    products: <ProductManager />,
+    categories: <CategoryManager />,
+    orders: <OrderManager />,
+    customers: <UserManager />,
+    settings: <AdminSettings />
+  }), []);
+
+  // CORRECCIÓN: Obtener el componente actual de forma memoizada
+  const currentComponent = useMemo(() => {
+    return sectionComponents[currentSection] || sectionComponents.dashboard;
+  }, [currentSection, sectionComponents]);
 
   return (
     <AdminLayout 
@@ -65,7 +61,7 @@ const AdminPanel = ({ onBackToStore }) => {
       onSectionChange={setCurrentSection}
       onBackToStore={onBackToStore}
     >
-      {renderCurrentSection()}
+      {currentComponent}
     </AdminLayout>
   );
 };
