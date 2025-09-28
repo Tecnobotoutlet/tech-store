@@ -1,5 +1,5 @@
-// src/components/admin/ProductManager.js - Formulario Completo con Especificaciones
-import React, { useState, useEffect } from 'react';
+// src/components/admin/ProductManager.js - Formulario Corregido
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
 import {
   Plus,
@@ -22,6 +22,82 @@ import {
   MinusCircle
 } from 'lucide-react';
 
+// Constantes movidas fuera del componente para evitar re-creaciones
+const CATEGORIES = [
+  'tecnologia',
+  'hogar', 
+  'deportes',
+  'salud',
+  'moda',
+  'libros'
+];
+
+const BRANDS = [
+  'Apple',
+  'Samsung',
+  'Google',
+  'Xiaomi',
+  'Sony',
+  'HP',
+  'Dell',
+  'Asus',
+  'Nike',
+  'Adidas',
+  'IKEA',
+  'Centrum'
+];
+
+const SPECIFICATION_TYPES = [
+  { type: "processor", label: "Procesador" },
+  { type: "ram", label: "Memoria RAM" },
+  { type: "storage", label: "Almacenamiento" },
+  { type: "display", label: "Pantalla" },
+  { type: "camera", label: "Cámara" },
+  { type: "battery", label: "Batería" },
+  { type: "os", label: "Sistema Operativo" },
+  { type: "connectivity", label: "Conectividad" },
+  { type: "material", label: "Material" },
+  { type: "dimensions", label: "Dimensiones" },
+  { type: "weight", label: "Peso" },
+  { type: "graphics", label: "Gráficos" },
+  { type: "ports", label: "Puertos" },
+  { type: "wireless", label: "Inalámbrico" },
+  { type: "color", label: "Color" },
+  { type: "warranty", label: "Garantía" },
+  { type: "other", label: "Otro" }
+];
+
+const INITIAL_FORM_DATA = {
+  name: '',
+  description: '',
+  price: '',
+  originalPrice: '',
+  category: '',
+  categoryName: '',
+  subcategory: '',
+  subcategoryName: '',
+  brand: '',
+  model: '',
+  stock: '',
+  stockQuantity: '',
+  image: '',
+  images: [''],
+  isActive: true,
+  isFeatured: false,
+  isNew: false,
+  inStock: true,
+  discount: 0,
+  rating: 4.5,
+  reviews: 0,
+  totalReviews: 0,
+  tags: [],
+  warranty: '12 meses de garantía',
+  shipping: 'Envío gratis en 24-48 horas',
+  specifications: [],
+  features: [],
+  variants: []
+};
+
 const ProductManager = () => {
   const { 
     products: allProducts, 
@@ -33,51 +109,6 @@ const ProductManager = () => {
 
   const products = allProducts;
 
-  const [categories] = useState([
-    'tecnologia',
-    'hogar', 
-    'deportes',
-    'salud',
-    'moda',
-    'libros'
-  ]);
-
-  const [brands] = useState([
-    'Apple',
-    'Samsung',
-    'Google',
-    'Xiaomi',
-    'Sony',
-    'HP',
-    'Dell',
-    'Asus',
-    'Nike',
-    'Adidas',
-    'IKEA',
-    'Centrum'
-  ]);
-
-  // Tipos de especificaciones predefinidos
-  const [specificationTypes] = useState([
-    { type: "processor", label: "Procesador" },
-    { type: "ram", label: "Memoria RAM" },
-    { type: "storage", label: "Almacenamiento" },
-    { type: "display", label: "Pantalla" },
-    { type: "camera", label: "Cámara" },
-    { type: "battery", label: "Batería" },
-    { type: "os", label: "Sistema Operativo" },
-    { type: "connectivity", label: "Conectividad" },
-    { type: "material", label: "Material" },
-    { type: "dimensions", label: "Dimensiones" },
-    { type: "weight", label: "Peso" },
-    { type: "graphics", label: "Gráficos" },
-    { type: "ports", label: "Puertos" },
-    { type: "wireless", label: "Inalámbrico" },
-    { type: "color", label: "Color" },
-    { type: "warranty", label: "Garantía" },
-    { type: "other", label: "Otro" }
-  ]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
@@ -85,36 +116,7 @@ const ProductManager = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    originalPrice: '',
-    category: '',
-    categoryName: '',
-    subcategory: '',
-    subcategoryName: '',
-    brand: '',
-    model: '',
-    stock: '',
-    stockQuantity: '',
-    image: '',
-    images: [''],
-    isActive: true,
-    isFeatured: false,
-    isNew: false,
-    inStock: true,
-    discount: 0,
-    rating: 4.5,
-    reviews: 0,
-    totalReviews: 0,
-    tags: [],
-    warranty: '12 meses de garantía',
-    shipping: 'Envío gratis en 24-48 horas',
-    specifications: [],
-    features: [],
-    variants: []
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [formErrors, setFormErrors] = useState({});
 
   // Estados para formularios dinámicos
@@ -123,77 +125,68 @@ const ProductManager = () => {
   const [newVariant, setNewVariant] = useState({ name: '', color: '#000000', available: true });
   const [newTag, setNewTag] = useState('');
 
-  const formatCurrency = (amount) => {
+  // Función memoizada para formatear moneda
+  const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0
     }).format(amount);
-  };
+  }, []);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || 
-                           product.category === selectedCategory || 
-                           product.categoryName?.toLowerCase().includes(selectedCategory.toLowerCase());
-    const matchesBrand = !selectedBrand || product.brand === selectedBrand;
-    
-    return matchesSearch && matchesCategory && matchesBrand;
-  });
+  // Función memoizada para obtener nombre de categoría
+  const getCategoryDisplayName = useCallback((category) => {
+    const categoryMap = {
+      'tecnologia': 'Tecnología',
+      'hogar': 'Hogar y Jardín',
+      'deportes': 'Deportes y Fitness',
+      'salud': 'Salud y Belleza',
+      'moda': 'Moda y Ropa',
+      'libros': 'Libros y Media'
+    };
+    return categoryMap[category] || category;
+  }, []);
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case 'name':
-        return a.name.localeCompare(b.name);
-      case 'price':
-        return a.price - b.price;
-      case 'stock':
-        return (a.stockQuantity || a.stock || 0) - (b.stockQuantity || b.stock || 0);
-      case 'created':
-        return new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0);
-      default:
-        return 0;
-    }
-  });
-
-  const handleAddProduct = () => {
-    setModalMode('add');
-    setFormData({
-      name: '',
-      description: '',
-      price: '',
-      originalPrice: '',
-      category: '',
-      categoryName: '',
-      subcategory: '',
-      subcategoryName: '',
-      brand: '',
-      model: '',
-      stock: '',
-      stockQuantity: '',
-      image: '',
-      images: [''],
-      isActive: true,
-      isFeatured: false,
-      isNew: false,
-      inStock: true,
-      discount: 0,
-      rating: 4.5,
-      reviews: 0,
-      totalReviews: 0,
-      tags: [],
-      warranty: '12 meses de garantía',
-      shipping: 'Envío gratis en 24-48 horas',
-      specifications: [],
-      features: [],
-      variants: []
+  // Productos filtrados y ordenados con useMemo
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = !selectedCategory || 
+                             product.category === selectedCategory || 
+                             product.categoryName?.toLowerCase().includes(selectedCategory.toLowerCase());
+      const matchesBrand = !selectedBrand || product.brand === selectedBrand;
+      
+      return matchesSearch && matchesCategory && matchesBrand;
     });
+  }, [products, searchTerm, selectedCategory, selectedBrand]);
+
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'price':
+          return a.price - b.price;
+        case 'stock':
+          return (a.stockQuantity || a.stock || 0) - (b.stockQuantity || b.stock || 0);
+        case 'created':
+          return new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0);
+        default:
+          return 0;
+      }
+    });
+  }, [filteredProducts, sortBy]);
+
+  // Handlers con useCallback para evitar re-renders
+  const handleAddProduct = useCallback(() => {
+    setModalMode('add');
+    setFormData({ ...INITIAL_FORM_DATA });
     setFormErrors({});
     setShowModal(true);
-  };
+  }, []);
 
-  const handleEditProduct = (product) => {
+  const handleEditProduct = useCallback((product) => {
     if (!product.isFromAdmin) {
       alert('Solo puedes editar productos que hayas creado en el panel administrativo.');
       return;
@@ -233,15 +226,15 @@ const ProductManager = () => {
     });
     setFormErrors({});
     setShowModal(true);
-  };
+  }, []);
 
-  const handleViewProduct = (product) => {
+  const handleViewProduct = useCallback((product) => {
     setModalMode('view');
     setSelectedProduct(product);
     setShowModal(true);
-  };
+  }, []);
 
-  const handleDeleteProduct = (product) => {
+  const handleDeleteProduct = useCallback((product) => {
     if (!product.isFromAdmin) {
       alert('Solo puedes eliminar productos que hayas creado en el panel administrativo.');
       return;
@@ -250,9 +243,9 @@ const ProductManager = () => {
     if (window.confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
       deleteProduct(product.id);
     }
-  };
+  }, [deleteProduct]);
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const errors = {};
     
     if (!formData.name.trim()) errors.name = 'El nombre es requerido';
@@ -264,9 +257,9 @@ const ProductManager = () => {
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSaveProduct = () => {
+  const handleSaveProduct = useCallback(() => {
     if (!validateForm()) return;
 
     // Calcular precio original y descuento
@@ -313,44 +306,37 @@ const ProductManager = () => {
     }
 
     setShowModal(false);
-  };
+  }, [formData, modalMode, selectedProduct, validateForm, getCategoryDisplayName, addProduct, updateProduct]);
 
-  const getCategoryDisplayName = (category) => {
-    const categoryMap = {
-      'tecnologia': 'Tecnología',
-      'hogar': 'Hogar y Jardín',
-      'deportes': 'Deportes y Fitness',
-      'salud': 'Salud y Belleza',
-      'moda': 'Moda y Ropa',
-      'libros': 'Libros y Media'
-    };
-    return categoryMap[category] || category;
-  };
-
-  const handleInputChange = (e) => {
+  // Handler principal para inputs - ESTA ES LA CORRECCIÓN CLAVE
+  const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-
-    if (name === 'stockQuantity') {
-      setFormData(prev => ({
+    
+    setFormData(prev => {
+      const newData = {
         ...prev,
-        stock: value,
-        inStock: parseInt(value) > 0
-      }));
-    }
+        [name]: type === 'checkbox' ? checked : value
+      };
 
+      // Lógica especial para stockQuantity
+      if (name === 'stockQuantity') {
+        newData.stock = value;
+        newData.inStock = parseInt(value) > 0;
+      }
+
+      return newData;
+    });
+
+    // Limpiar errores
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: '' }));
     }
-  };
+  }, [formErrors]);
 
   // Funciones para manejar especificaciones
-  const addSpecification = () => {
+  const addSpecification = useCallback(() => {
     if (newSpecification.type && newSpecification.label && newSpecification.value) {
-      const selectedType = specificationTypes.find(t => t.type === newSpecification.type);
+      const selectedType = SPECIFICATION_TYPES.find(t => t.type === newSpecification.type);
       const spec = {
         type: newSpecification.type,
         label: selectedType ? selectedType.label : newSpecification.label,
@@ -364,17 +350,17 @@ const ProductManager = () => {
       
       setNewSpecification({ type: '', label: '', value: '' });
     }
-  };
+  }, [newSpecification]);
 
-  const removeSpecification = (index) => {
+  const removeSpecification = useCallback((index) => {
     setFormData(prev => ({
       ...prev,
       specifications: prev.specifications.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
   // Funciones para manejar características
-  const addFeature = () => {
+  const addFeature = useCallback(() => {
     if (newFeature.trim()) {
       setFormData(prev => ({
         ...prev,
@@ -382,17 +368,17 @@ const ProductManager = () => {
       }));
       setNewFeature('');
     }
-  };
+  }, [newFeature]);
 
-  const removeFeature = (index) => {
+  const removeFeature = useCallback((index) => {
     setFormData(prev => ({
       ...prev,
       features: prev.features.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
   // Funciones para manejar variantes
-  const addVariant = () => {
+  const addVariant = useCallback(() => {
     if (newVariant.name.trim()) {
       setFormData(prev => ({
         ...prev,
@@ -400,17 +386,17 @@ const ProductManager = () => {
       }));
       setNewVariant({ name: '', color: '#000000', available: true });
     }
-  };
+  }, [newVariant]);
 
-  const removeVariant = (index) => {
+  const removeVariant = useCallback((index) => {
     setFormData(prev => ({
       ...prev,
       variants: prev.variants.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
   // Funciones para manejar tags
-  const addTag = () => {
+  const addTag = useCallback(() => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       setFormData(prev => ({
         ...prev,
@@ -418,45 +404,45 @@ const ProductManager = () => {
       }));
       setNewTag('');
     }
-  };
+  }, [newTag, formData.tags]);
 
-  const removeTag = (index) => {
+  const removeTag = useCallback((index) => {
     setFormData(prev => ({
       ...prev,
       tags: prev.tags.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
   // Funciones para manejar imágenes
-  const addImageField = () => {
+  const addImageField = useCallback(() => {
     setFormData(prev => ({
       ...prev,
       images: [...prev.images, '']
     }));
-  };
+  }, []);
 
-  const removeImageField = (index) => {
+  const removeImageField = useCallback((index) => {
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
-  const updateImageField = (index, value) => {
+  const updateImageField = useCallback((index, value) => {
     setFormData(prev => ({
       ...prev,
       images: prev.images.map((img, i) => i === index ? value : img)
     }));
-  };
+  }, []);
 
-  const getStockStatus = (product) => {
+  const getStockStatus = useCallback((product) => {
     const stock = product.stockQuantity || product.stock || 0;
     if (stock === 0) return { label: 'Sin Stock', color: 'bg-red-100 text-red-800' };
     if (stock <= 5) return { label: 'Stock Bajo', color: 'bg-yellow-100 text-yellow-800' };
     return { label: 'En Stock', color: 'bg-green-100 text-green-800' };
-  };
+  }, []);
 
-  const ProductModal = () => (
+  const ProductModal = useCallback(() => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-6xl w-full max-h-screen overflow-y-auto">
         {/* Header */}
@@ -703,7 +689,7 @@ const ProductManager = () => {
                       }`}
                     >
                       <option value="">Seleccionar categoría</option>
-                      {categories.map(category => (
+                      {CATEGORIES.map(category => (
                         <option key={category} value={category}>{getCategoryDisplayName(category)}</option>
                       ))}
                     </select>
@@ -725,7 +711,7 @@ const ProductManager = () => {
                       }`}
                     >
                       <option value="">Seleccionar marca</option>
-                      {brands.map(brand => (
+                      {BRANDS.map(brand => (
                         <option key={brand} value={brand}>{brand}</option>
                       ))}
                     </select>
@@ -804,7 +790,7 @@ const ProductManager = () => {
                   <select
                     value={newSpecification.type}
                     onChange={(e) => {
-                      const selectedType = specificationTypes.find(t => t.type === e.target.value);
+                      const selectedType = SPECIFICATION_TYPES.find(t => t.type === e.target.value);
                       setNewSpecification(prev => ({
                         ...prev,
                         type: e.target.value,
@@ -814,7 +800,7 @@ const ProductManager = () => {
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Tipo de especificación</option>
-                    {specificationTypes.map(type => (
+                    {SPECIFICATION_TYPES.map(type => (
                       <option key={type.type} value={type.type}>{type.label}</option>
                     ))}
                   </select>
@@ -1110,7 +1096,7 @@ const ProductManager = () => {
         </div>
       </div>
     </div>
-  );
+  ), [modalMode, selectedProduct, formData, formErrors, handleInputChange, newSpecification, newFeature, newVariant, newTag, updateImageField, addImageField, removeImageField, addSpecification, removeSpecification, addFeature, removeFeature, addVariant, removeVariant, addTag, removeTag, getCategoryDisplayName, handleSaveProduct]);
 
   return (
     <div className="space-y-6">
@@ -1160,7 +1146,7 @@ const ProductManager = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Todas las categorías</option>
-              {categories.map(category => (
+              {CATEGORIES.map(category => (
                 <option key={category} value={category}>{getCategoryDisplayName(category)}</option>
               ))}
             </select>
@@ -1174,7 +1160,7 @@ const ProductManager = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Todas las marcas</option>
-              {brands.map(brand => (
+              {BRANDS.map(brand => (
                 <option key={brand} value={brand}>{brand}</option>
               ))}
             </select>
