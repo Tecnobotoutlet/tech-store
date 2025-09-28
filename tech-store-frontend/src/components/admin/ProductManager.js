@@ -99,6 +99,7 @@ const INITIAL_FORM_DATA = {
 };
 
 const ProductManager = () => {
+  console.log('🔴 ProductManager render - timestamp:', Date.now());
   const { 
     products: allProducts, 
     addProduct, 
