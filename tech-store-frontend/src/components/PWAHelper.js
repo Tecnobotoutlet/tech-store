@@ -1,5 +1,5 @@
-// src/components/PWAHelper.js - Componente para manejar funcionalidades PWA
-import React, { useState, useEffect } from 'react';
+// src/components/PWAHelper.js - Versión Optimizada sin re-renders
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Wifi, WifiOff, Download, Smartphone, Bell, RefreshCw } from 'lucide-react';
 
 const PWAHelper = () => {
@@ -9,149 +9,20 @@ const PWAHelper = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
-  const [swRegistration, setSwRegistration] = useState(null);
+  
+  // Usar refs para evitar re-renders de timers
+  const swRegistration = useRef(null);
+  const installTimerRef = useRef(null);
+  const notificationTimerRef = useRef(null);
+  const toastTimeoutRef = useRef(null);
 
-  useEffect(() => {
-    // Detectar si ya está instalado como PWA
-    const checkIfInstalled = () => {
-      const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
-      const isInWebAppMode = window.navigator.standalone === true;
-      setIsInstalled(isInStandaloneMode || isInWebAppMode);
-    };
-
-    checkIfInstalled();
-
-    // Escuchar cambios en el estado de conexión
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Escuchar evento de instalación PWA
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      
-      // Mostrar prompt personalizado después de un tiempo si no está instalado
-      if (!isInstalled && !localStorage.getItem('pwa-install-dismissed')) {
-        setTimeout(() => {
-          setShowInstallPrompt(true);
-        }, 10000); // Mostrar después de 10 segundos
-      }
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Detectar cuando se instala la PWA
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setShowInstallPrompt(false);
-      setDeferredPrompt(null);
-      
-      // Mostrar mensaje de bienvenida
-      setTimeout(() => {
-        if (Notification.permission === 'granted') {
-          new Notification('¡TechStore instalado!', {
-            body: 'Ahora puedes acceder rápidamente desde tu pantalla de inicio',
-            icon: '/icons/icon-192x192.png'
-          });
-        }
-      }, 1000);
-    };
-
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    // Registrar Service Worker y escuchar actualizaciones
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          setSwRegistration(registration);
-          
-          // Escuchar actualizaciones del SW
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setShowUpdatePrompt(true);
-                }
-              });
-            }
-          });
-        });
-
-      // Escuchar mensajes del Service Worker
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data.type === 'CART_SYNCED') {
-          showToast('Carrito sincronizado correctamente', 'success');
-        }
-        if (event.data.type === 'CACHE_UPDATED') {
-          showToast('Contenido actualizado disponible offline', 'info');
-        }
-      });
+  // Memoizar funciones para evitar re-renders
+  const showToast = useCallback((message, type = 'info') => {
+    // Limpiar timeout anterior si existe
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
     }
 
-    // Verificar permisos de notificación
-    if ('Notification' in window && Notification.permission === 'default' && !isInstalled) {
-      setTimeout(() => {
-        setShowNotificationPrompt(true);
-      }, 15000); // Mostrar después de 15 segundos
-    }
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, [isInstalled]);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        console.log('Usuario aceptó la instalación');
-      } else {
-        console.log('Usuario rechazó la instalación');
-        localStorage.setItem('pwa-install-dismissed', 'true');
-      }
-      
-      setDeferredPrompt(null);
-      setShowInstallPrompt(false);
-    }
-  };
-
-  const handleUpdateClick = () => {
-    if (swRegistration && swRegistration.waiting) {
-      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      window.location.reload();
-    }
-  };
-
-  const handleNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        showToast('Notificaciones habilitadas', 'success');
-        
-        // Suscribirse a push notifications si está disponible
-        if (swRegistration && 'pushManager' in swRegistration) {
-          try {
-            // Aquí implementarías la suscripción real a push notifications
-            console.log('Push notifications setup');
-          } catch (error) {
-            console.error('Error setting up push notifications:', error);
-          }
-        }
-      }
-    }
-    setShowNotificationPrompt(false);
-  };
-
-  const showToast = (message, type = 'info') => {
     // Crear toast notification
     const toast = document.createElement('div');
     toast.style.cssText = `
@@ -182,18 +53,184 @@ const PWAHelper = () => {
     toast.textContent = message;
     document.body.appendChild(toast);
     
-    setTimeout(() => {
-      toast.remove();
-      style.remove();
+    toastTimeoutRef.current = setTimeout(() => {
+      if (toast.parentNode) toast.remove();
+      if (style.parentNode) style.remove();
+      toastTimeoutRef.current = null;
     }, 4000);
-  };
+  }, []);
 
-  const addToHomeScreen = () => {
-    // Para dispositivos que no soportan beforeinstallprompt
-    showToast('Para instalar: usa el menú del navegador y selecciona "Añadir a pantalla de inicio"', 'info');
-  };
+  // Detectar si ya está instalado - SOLO UNA VEZ
+  useEffect(() => {
+    const checkIfInstalled = () => {
+      const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+      const isInWebAppMode = window.navigator.standalone === true;
+      setIsInstalled(isInStandaloneMode || isInWebAppMode);
+      return isInStandaloneMode || isInWebAppMode;
+    };
 
-  const shareApp = async () => {
+    const installed = checkIfInstalled();
+
+    // Solo configurar timers si NO está instalado
+    if (!installed) {
+      // Timer para install prompt - SOLO UNA VEZ
+      if (!localStorage.getItem('pwa-install-dismissed')) {
+        installTimerRef.current = setTimeout(() => {
+          setShowInstallPrompt(true);
+        }, 10000);
+      }
+
+      // Timer para notification prompt - SOLO UNA VEZ
+      if ('Notification' in window && Notification.permission === 'default') {
+        notificationTimerRef.current = setTimeout(() => {
+          setShowNotificationPrompt(true);
+        }, 15000);
+      }
+    }
+
+    // Cleanup
+    return () => {
+      if (installTimerRef.current) clearTimeout(installTimerRef.current);
+      if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current);
+    };
+  }, []); // Sin dependencias - solo se ejecuta una vez
+
+  // Listeners de eventos - MEMOIZADOS
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      
+      // Solo mostrar si no está instalado y no fue rechazado antes
+      if (!isInstalled && !localStorage.getItem('pwa-install-dismissed')) {
+        setShowInstallPrompt(true);
+      }
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setShowInstallPrompt(false);
+      setDeferredPrompt(null);
+      
+      // Mostrar notificación de bienvenida SIN timeout problemático
+      if (Notification.permission === 'granted') {
+        try {
+          new Notification('¡TechStore instalado!', {
+            body: 'Ahora puedes acceder rápidamente desde tu pantalla de inicio',
+            icon: '/icons/icon-192x192.png'
+          });
+        } catch (error) {
+          console.log('Error showing notification:', error);
+        }
+      }
+    };
+
+    // Agregar listeners
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [isInstalled]); // Solo re-ejecutar si cambia isInstalled
+
+  // Service Worker registration - SOLO UNA VEZ
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          swRegistration.current = registration;
+          
+          // Escuchar actualizaciones del SW
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setShowUpdatePrompt(true);
+                }
+              });
+            }
+          });
+        })
+        .catch(error => console.log('SW registration failed:', error));
+
+      // Escuchar mensajes del Service Worker
+      const handleSWMessage = (event) => {
+        if (event.data.type === 'CART_SYNCED') {
+          showToast('Carrito sincronizado correctamente', 'success');
+        }
+        if (event.data.type === 'CACHE_UPDATED') {
+          showToast('Contenido actualizado disponible offline', 'info');
+        }
+      };
+
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+      
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      };
+    }
+  }, [showToast]); // Solo depende de showToast que es estable
+
+  // Handlers memoizados
+  const handleInstallClick = useCallback(async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+          console.log('Usuario aceptó la instalación');
+        } else {
+          console.log('Usuario rechazó la instalación');
+          localStorage.setItem('pwa-install-dismissed', 'true');
+        }
+      } catch (error) {
+        console.log('Error installing app:', error);
+      }
+      
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    }
+  }, [deferredPrompt]);
+
+  const handleUpdateClick = useCallback(() => {
+    if (swRegistration.current && swRegistration.current.waiting) {
+      swRegistration.current.waiting.postMessage({ type: 'SKIP_WAITING' });
+      window.location.reload();
+    }
+  }, []);
+
+  const handleNotificationPermission = useCallback(async () => {
+    if ('Notification' in window) {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          showToast('Notificaciones habilitadas', 'success');
+          
+          // Suscribirse a push notifications si está disponible
+          if (swRegistration.current && 'pushManager' in swRegistration.current) {
+            console.log('Push notifications setup');
+          }
+        }
+      } catch (error) {
+        console.error('Error requesting notification permission:', error);
+      }
+    }
+    setShowNotificationPrompt(false);
+  }, [showToast]);
+
+  const shareApp = useCallback(async () => {
     if (navigator.share) {
       try {
         await navigator.share({
@@ -207,21 +244,34 @@ const PWAHelper = () => {
     } else {
       // Fallback para navegadores sin Web Share API
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(window.location.origin);
-        showToast('Link copiado al portapapeles', 'success');
+        try {
+          await navigator.clipboard.writeText(window.location.origin);
+          showToast('Link copiado al portapapeles', 'success');
+        } catch (error) {
+          console.log('Error copying to clipboard:', error);
+        }
       }
     }
-  };
+  }, [showToast]);
 
-  const enableOfflineMode = () => {
+  const enableOfflineMode = useCallback(() => {
     // Cachear productos populares para modo offline
-    if ('serviceWorker' in navigator && swRegistration) {
-      swRegistration.active?.postMessage({
+    if ('serviceWorker' in navigator && swRegistration.current) {
+      swRegistration.current.active?.postMessage({
         type: 'CACHE_POPULAR_PRODUCTS'
       });
       showToast('Productos guardados para uso offline', 'success');
     }
-  };
+  }, [showToast]);
+
+  // Cleanup al desmontar
+  useEffect(() => {
+    return () => {
+      if (installTimerRef.current) clearTimeout(installTimerRef.current);
+      if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   return (
     <>
@@ -361,18 +411,16 @@ const PWAHelper = () => {
         </div>
       )}
 
-      {/* Indicador de Conexión Restaurada */}
-      {isOnline && (
-        <style jsx>{`
-          @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-          }
-          .animate-slide-up {
-            animation: slideUp 0.3s ease-out;
-          }
-        `}</style>
-      )}
+      {/* CSS para animaciones */}
+      <style jsx>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .animate-slide-up {
+          animation: slideUp 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 };
