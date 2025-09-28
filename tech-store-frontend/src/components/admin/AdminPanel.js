@@ -8,7 +8,7 @@ import OrderManager from './OrderManager';
 import CategoryManager from './CategoryManager';
 import UserManager from './UserManager';
 import AdminSettings from './AdminSettings';
-import TestForm from './TestForm';
+
 
 const AdminPanel = ({ onBackToStore }) => {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -21,7 +21,7 @@ const AdminPanel = ({ onBackToStore }) => {
       case 'dashboard':
         return <AdminDashboard />;
       case 'products':
-        return <TestForm />; 
+        return <ProductManager />; 
       case 'categories':
         return <CategoryManager />;
       case 'orders':
