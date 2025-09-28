@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 
 // Crear el contexto
 const CartContext = createContext();
@@ -18,6 +18,15 @@ const initialState = {
   wishlist: [],
   total: 0,
   itemCount: 0
+};
+
+// Funciones utilitarias - MOVIDAS FUERA PARA EVITAR RE-CREACIÓN
+const calculateTotal = (items) => {
+  return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+};
+
+const calculateItemCount = (items) => {
+  return items.reduce((count, item) => count + item.quantity, 0);
 };
 
 // Reducer para manejar las acciones
@@ -117,15 +126,6 @@ const cartReducer = (state, action) => {
   }
 };
 
-// Funciones utilitarias
-const calculateTotal = (items) => {
-  return items.reduce((total, item) => total + (item.price * item.quantity), 0);
-};
-
-const calculateItemCount = (items) => {
-  return items.reduce((count, item) => count + item.quantity, 0);
-};
-
 // Hook personalizado para usar el contexto
 export const useCart = () => {
   const context = useContext(CartContext);
@@ -139,7 +139,7 @@ export const useCart = () => {
 export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
 
-  // Cargar datos del localStorage al iniciar
+  // Cargar datos del localStorage al iniciar - SOLO UNA VEZ
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
     const savedWishlist = localStorage.getItem('wishlist');
@@ -167,9 +167,9 @@ export const CartProvider = ({ children }) => {
         console.error('Error loading wishlist from localStorage:', error);
       }
     }
-  }, []);
+  }, []); // Sin dependencias - solo se ejecuta una vez
 
-  // Guardar en localStorage cuando cambie el estado
+  // Guardar en localStorage cuando cambie el estado - OPTIMIZADO
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify({
       items: state.items,
@@ -182,32 +182,33 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('wishlist', JSON.stringify(state.wishlist));
   }, [state.wishlist]);
 
-  // Funciones para las acciones
-  const addToCart = (product) => {
+  // Funciones para las acciones - MEMOIZADAS
+  const addToCart = useCallback((product) => {
     dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: product });
-  };
+  }, []);
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = useCallback((productId) => {
     dispatch({ type: CART_ACTIONS.REMOVE_ITEM, payload: productId });
-  };
+  }, []);
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = useCallback((productId, quantity) => {
     dispatch({ type: CART_ACTIONS.UPDATE_QUANTITY, payload: { id: productId, quantity } });
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     dispatch({ type: CART_ACTIONS.CLEAR_CART });
-  };
+  }, []);
 
-  const toggleWishlist = (product) => {
+  const toggleWishlist = useCallback((product) => {
     dispatch({ type: CART_ACTIONS.TOGGLE_WISHLIST, payload: product });
-  };
+  }, []);
 
-  const isInWishlist = (productId) => {
+  const isInWishlist = useCallback((productId) => {
     return state.wishlist.some(item => item.id === productId);
-  };
+  }, [state.wishlist]);
 
-  const value = {
+  // CRÍTICO: Memoizar el objeto value para evitar re-renders
+  const value = useMemo(() => ({
     ...state,
     addToCart,
     removeFromCart,
@@ -215,7 +216,15 @@ export const CartProvider = ({ children }) => {
     clearCart,
     toggleWishlist,
     isInWishlist
-  };
+  }), [
+    state,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    toggleWishlist,
+    isInWishlist
+  ]);
 
   return (
     <CartContext.Provider value={value}>
