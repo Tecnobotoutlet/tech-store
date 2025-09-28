@@ -1,8 +1,8 @@
-// src/App.js - Modificación para usar ProductContext
+// src/App.js - Versión Corregida
 import React, { useState, useEffect } from 'react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
-import { ProductProvider, useProducts } from './context/ProductContext'; // ← NUEVO
+import { ProductProvider, useProducts } from './context/ProductContext';
 import Header from './components/Header';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -19,7 +19,6 @@ import PWAHelper from './components/PWAHelper';
 
 // Componente interno que usa el contexto
 function AppContent() {
-  // ← CAMBIO: Usar contexto en lugar de importar productos
   const { 
     products, 
     getFeaturedProducts, 
@@ -35,7 +34,6 @@ function AppContent() {
   const [paymentData, setPaymentData] = useState(null);
   const [paymentResultType, setPaymentResultType] = useState('success');
 
-  // ← CAMBIO: Usar productos del contexto
   const productFilters = useProductFilters(products);
   
   const filteredProducts = productFilters?.filteredProducts || products;
@@ -53,26 +51,11 @@ function AppContent() {
   const handleSortChange = productFilters?.handleSortChange || (() => {});
   const handleStockFilterChange = productFilters?.handleStockFilterChange || (() => {});
 
-  // ← CAMBIO: Usar funciones del contexto
   const featuredProducts = getFeaturedProducts();
   const newProducts = getNewProducts();
   const saleProducts = getDiscountedProducts();
 
-  // Productos filtrados por sección
-  const getProductsBySection = () => {
-    switch (currentSection) {
-      case 'ofertas':
-        return products.filter(product => product.discount > 0);
-      case 'nuevos':
-        return products.filter(product => product.isNew);
-      case 'destacados':
-        return products.filter(product => product.isFeatured);
-      default:
-        return products;
-    }
-  };
-
-  // Handlers de navegación (mantener igual)
+  // Handlers de navegación
   const handleCartClick = () => setIsCartOpen(true);
   const handleCartClose = () => setIsCartOpen(false);
   
@@ -139,10 +122,9 @@ function AppContent() {
     alert('Funcionalidad de seguimiento de pedidos próximamente');
   };
 
-  // Todos los renderView mantienen el mismo código, solo cambio en las fuentes de datos
   const renderHomeView = () => (
     <main>
-      {/* Hero Section Mejorado */}
+      {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 text-white py-20 overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative container mx-auto px-4 text-center">
@@ -173,13 +155,12 @@ function AppContent() {
           </div>
         </div>
         
-        {/* Elementos decorativos */}
         <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
         <div className="absolute bottom-20 right-10 w-32 h-32 bg-yellow-400/20 rounded-full blur-xl"></div>
         <div className="absolute top-1/2 left-1/2 w-40 h-40 bg-purple-400/10 rounded-full blur-2xl transform -translate-x-1/2 -translate-y-1/2"></div>
       </section>
 
-      {/* Sección de Categorías Rápidas */}
+      {/* Sección de Categorías */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
@@ -380,7 +361,7 @@ function AppContent() {
         </div>
 
         <ProductFilters
-          products={products} {/* ← CAMBIO: usar products del contexto */}
+          products={products}
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
           selectedCategories={selectedCategories}
@@ -407,7 +388,6 @@ function AppContent() {
     </main>
   );
 
-  // Resto de renders mantienen el código igual...
   const renderProductView = () => (
     <ProductDetail 
       productId={selectedProductId}
@@ -519,14 +499,13 @@ function AppContent() {
   );
 }
 
-// ← CAMBIO: Envolver en ProductProvider
 function App() {
   return (
     <AuthProvider>
-      <ProductProvider> {/* ← NUEVO: Envolver en ProductProvider */}
+      <ProductProvider>
         <CartProvider>
           <PWAHelper />
-          <AppContent /> {/* ← Componente que usa el contexto */}
+          <AppContent />
         </CartProvider>
       </ProductProvider>
     </AuthProvider>
