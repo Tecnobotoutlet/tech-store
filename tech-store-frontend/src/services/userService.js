@@ -152,30 +152,45 @@ export const userService = {
 
   // Actualizar usuario
   async updateUser(userId, userData) {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update({
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone,
-          role: userData.role,
-          is_active: userData.status === 'active',
-          email_verified: userData.verified,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .select()
-        .single();
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .update({
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        phone: userData.phone,
+        role: userData.role, // Ahora sí se puede cambiar
+        is_active: userData.status === 'active',
+        email_verified: userData.verified,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
-  },
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw error;
+  }
+},
 
+  async changeUserRole(userId, newRole) {
+  try {
+    const { data, error } = await supabase.rpc('update_user_role', {
+      target_user_id: userId,
+      new_role: newRole
+    });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error changing user role:', error);
+    throw error;
+  }
+},
+  
   // Cambiar estado del usuario
   async updateUserStatus(userId, isActive) {
     try {
