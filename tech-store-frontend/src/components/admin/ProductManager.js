@@ -1,4 +1,4 @@
-// src/components/admin/ProductManager.js - Versión Completa con Todas las Funcionalidades
+// src/components/admin/ProductManager.js - Versión Completa con Categorías y Subcategorías
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
 import { categoryService } from '../../services/categoryService';
@@ -23,16 +23,7 @@ import {
   MinusCircle
 } from 'lucide-react';
 
-// Constantes movidas fuera del componente para evitar re-creaciones
-const CATEGORIES = [
-  'tecnologia',
-  'hogar', 
-  'deportes',
-  'salud',
-  'moda',
-  'libros'
-];
-
+// Constantes
 const BRANDS = [
   'Apple',
   'Samsung',
@@ -74,8 +65,10 @@ const INITIAL_FORM_DATA = {
   price: '',
   originalPrice: '',
   category: '',
+  categoryId: null,
   categoryName: '',
   subcategory: '',
+  subcategoryId: null,
   subcategoryName: '',
   brand: '',
   model: '',
@@ -99,7 +92,7 @@ const INITIAL_FORM_DATA = {
   variants: []
 };
 
-// Modal completo como componente separado optimizado
+// Modal completo
 const CompleteProductModal = React.memo(({ 
   showModal, 
   modalMode, 
@@ -110,28 +103,27 @@ const CompleteProductModal = React.memo(({
   newFeature,
   newVariant,
   newTag,
+  categories,
+  subcategories,
   onClose, 
   onSave, 
   onInputChange,
+  onCategoryChange,
+  onSubcategoryChange,
   getCategoryDisplayName,
   formatCurrency,
-  // Handlers para especificaciones
   onSpecificationChange,
   onAddSpecification,
   onRemoveSpecification,
-  // Handlers para características
   onFeatureChange,
   onAddFeature,
   onRemoveFeature,
-  // Handlers para variantes
   onVariantChange,
   onAddVariant,
   onRemoveVariant,
-  // Handlers para tags
   onTagChange,
   onAddTag,
   onRemoveTag,
-  // Handlers para imágenes
   onUpdateImageField,
   onAddImageField,
   onRemoveImageField
@@ -184,12 +176,15 @@ const CompleteProductModal = React.memo(({
                       <p className="font-medium">{selectedProduct?.categoryName || selectedProduct?.category}</p>
                     </div>
                     <div>
+                      <span className="text-sm text-gray-500">Subcategoría</span>
+                      <p className="font-medium">{selectedProduct?.subcategoryName || selectedProduct?.subcategory}</p>
+                    </div>
+                    <div>
                       <span className="text-sm text-gray-500">Marca</span>
                       <p className="font-medium">{selectedProduct?.brand}</p>
                     </div>
                   </div>
                   
-                  {/* Mostrar especificaciones */}
                   {selectedProduct?.specifications && selectedProduct.specifications.length > 0 && (
                     <div>
                       <h5 className="font-semibold mb-2">Especificaciones</h5>
@@ -204,7 +199,6 @@ const CompleteProductModal = React.memo(({
                     </div>
                   )}
                   
-                  {/* Mostrar características */}
                   {selectedProduct?.features && selectedProduct.features.length > 0 && (
                     <div>
                       <h5 className="font-semibold mb-2">Características</h5>
@@ -356,30 +350,69 @@ const CompleteProductModal = React.memo(({
                 </div>
               </div>
 
-              {/* Categoría y Marca */}
+              {/* Categoría, Subcategoría y Marca */}
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h4 className="text-lg font-semibold mb-4">Categorización</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Categoría *
+                      Categoría Principal *
                     </label>
                     <select
                       name="category"
                       value={formData.category}
-                      onChange={onInputChange}
+                      onChange={onCategoryChange}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         formErrors.category ? 'border-red-500' : 'border-gray-300'
                       }`}
                     >
                       <option value="">Seleccionar categoría</option>
-                      {CATEGORIES.map(category => (
-                        <option key={category} value={category}>{getCategoryDisplayName(category)}</option>
+                      {Object.values(categories).map(category => (
+                        <option key={category.slug} value={category.slug}>
+                          {category.icon} {category.name}
+                        </option>
                       ))}
                     </select>
                     {formErrors.category && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.category}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subcategoría *
+                    </label>
+                    <select
+                      name="subcategory"
+                      value={formData.subcategory}
+                      onChange={onSubcategoryChange}
+                      disabled={!formData.category || subcategories.length === 0}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        formErrors.subcategory ? 'border-red-500' : 'border-gray-300'
+                      } ${!formData.category ? 'bg-gray-100' : ''}`}
+                    >
+                      <option value="">
+                        {!formData.category 
+                          ? 'Primero selecciona una categoría' 
+                          : subcategories.length === 0
+                          ? 'Esta categoría no tiene subcategorías'
+                          : 'Seleccionar subcategoría'
+                        }
+                      </option>
+                      {subcategories.map(subcategory => (
+                        <option key={subcategory.slug} value={subcategory.slug}>
+                          {subcategory.name}
+                        </option>
+                      ))}
+                    </select>
+                    {formErrors.subcategory && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.subcategory}</p>
+                    )}
+                    {formData.category && subcategories.length === 0 && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        Esta categoría no tiene subcategorías. Créalas en el Gestor de Categorías.
+                      </p>
                     )}
                   </div>
 
@@ -446,7 +479,6 @@ const CompleteProductModal = React.memo(({
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h4 className="text-lg font-semibold mb-4">Especificaciones Técnicas</h4>
                 
-                {/* Lista de especificaciones actuales */}
                 {formData.specifications.length > 0 && (
                   <div className="mb-4">
                     <h5 className="font-medium mb-2">Especificaciones agregadas:</h5>
@@ -470,7 +502,6 @@ const CompleteProductModal = React.memo(({
                   </div>
                 )}
 
-                {/* Agregar nueva especificación */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <select
                     value={newSpecification.type}
@@ -514,7 +545,6 @@ const CompleteProductModal = React.memo(({
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h4 className="text-lg font-semibold mb-4">Características Principales</h4>
                 
-                {/* Lista de características actuales */}
                 {formData.features.length > 0 && (
                   <div className="mb-4">
                     <h5 className="font-medium mb-2">Características agregadas:</h5>
@@ -535,7 +565,6 @@ const CompleteProductModal = React.memo(({
                   </div>
                 )}
 
-                {/* Agregar nueva característica */}
                 <div className="flex space-x-3">
                   <input
                     type="text"
@@ -560,7 +589,6 @@ const CompleteProductModal = React.memo(({
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h4 className="text-lg font-semibold mb-4">Variantes de Color</h4>
                 
-                {/* Lista de variantes actuales */}
                 {formData.variants.length > 0 && (
                   <div className="mb-4">
                     <h5 className="font-medium mb-2">Variantes agregadas:</h5>
@@ -592,7 +620,6 @@ const CompleteProductModal = React.memo(({
                   </div>
                 )}
 
-                {/* Agregar nueva variante */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <input
                     type="text"
@@ -637,7 +664,6 @@ const CompleteProductModal = React.memo(({
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h4 className="text-lg font-semibold mb-4">Tags</h4>
                 
-                {/* Lista de tags actuales */}
                 {formData.tags.length > 0 && (
                   <div className="mb-4">
                     <div className="flex flex-wrap gap-2">
@@ -657,7 +683,6 @@ const CompleteProductModal = React.memo(({
                   </div>
                 )}
 
-                {/* Agregar nuevo tag */}
                 <div className="flex space-x-3">
                   <input
                     type="text"
@@ -783,8 +808,7 @@ const ProductManager = () => {
     products: allProducts, 
     addProduct, 
     updateProduct, 
-    deleteProduct,
-    getProductStats
+    deleteProduct
   } = useProducts();
 
   const products = allProducts;
@@ -799,16 +823,34 @@ const ProductManager = () => {
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [formErrors, setFormErrors] = useState({});
 
+  // Estados para categorías
+  const [categories, setCategories] = useState({});
+  const [subcategories, setSubcategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
   // Estados para formularios dinámicos
   const [newSpecification, setNewSpecification] = useState({ type: '', label: '', value: '' });
   const [newFeature, setNewFeature] = useState('');
   const [newVariant, setNewVariant] = useState({ name: '', color: '#000000', available: true });
   const [newTag, setNewTag] = useState('');
-  const [categories, setCategories] = useState({});
-  const [subcategories, setSubcategories] = useState([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
 
-  // Función memoizada para formatear moneda
+  // Cargar categorías
+  useEffect(() => {
+    const loadCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const data = await categoryService.getAllCategories();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    
+    loadCategories();
+  }, []);
+
   const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -817,7 +859,6 @@ const ProductManager = () => {
     }).format(amount);
   }, []);
 
-  // Función memoizada para obtener nombre de categoría
   const getCategoryDisplayName = useCallback((category) => {
     const categoryMap = {
       'tecnologia': 'Tecnología',
@@ -830,7 +871,6 @@ const ProductManager = () => {
     return categoryMap[category] || category;
   }, []);
 
-  // Productos filtrados y ordenados con useMemo
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -861,11 +901,11 @@ const ProductManager = () => {
     });
   }, [filteredProducts, sortBy]);
 
-  // Handlers principales con useCallback
   const handleAddProduct = useCallback(() => {
     setModalMode('add');
     setFormData({ ...INITIAL_FORM_DATA });
     setFormErrors({});
+    setSubcategories([]);
     setNewSpecification({ type: '', label: '', value: '' });
     setNewFeature('');
     setNewVariant({ name: '', color: '#000000', available: true });
@@ -881,14 +921,23 @@ const ProductManager = () => {
     
     setModalMode('edit');
     setSelectedProduct(product);
+    
+    // Cargar subcategorías si hay categoría
+    const categorySlug = product.category;
+    if (categorySlug && categories[categorySlug]?.subcategories) {
+      setSubcategories(Object.values(categories[categorySlug].subcategories));
+    }
+    
     setFormData({
       name: product.name,
       description: product.description,
       price: product.price.toString(),
       originalPrice: product.originalPrice?.toString() || '',
-      category: product.category,
+      category: product.category || '',
+      categoryId: product.category_id || null,
       categoryName: product.categoryName || '',
       subcategory: product.subcategory || '',
+      subcategoryId: product.subcategory_id || null,
       subcategoryName: product.subcategoryName || '',
       brand: product.brand,
       model: product.model || '',
@@ -913,7 +962,7 @@ const ProductManager = () => {
     });
     setFormErrors({});
     setShowModal(true);
-  }, []);
+  }, [categories]);
 
   const handleViewProduct = useCallback((product) => {
     setModalMode('view');
@@ -939,6 +988,7 @@ const ProductManager = () => {
     if (!formData.description.trim()) errors.description = 'La descripción es requerida';
     if (!formData.price || formData.price <= 0) errors.price = 'El precio debe ser mayor a 0';
     if (!formData.category) errors.category = 'La categoría es requerida';
+    if (!formData.subcategory) errors.subcategory = 'La subcategoría es requerida';
     if (!formData.brand) errors.brand = 'La marca es requerida';
     if (!formData.stockQuantity || formData.stockQuantity < 0) errors.stockQuantity = 'El stock debe ser 0 o mayor';
 
@@ -959,10 +1009,12 @@ const ProductManager = () => {
       description: formData.description,
       price: price,
       originalPrice: originalPrice,
+      category_id: formData.categoryId,
+      subcategory_id: formData.subcategoryId,
       category: formData.category,
-      categoryName: getCategoryDisplayName(formData.category),
-      subcategory: formData.subcategory || formData.category,
-      subcategoryName: formData.subcategoryName || getCategoryDisplayName(formData.category),
+      categoryName: formData.categoryName,
+      subcategory: formData.subcategory,
+      subcategoryName: formData.subcategoryName,
       brand: formData.brand,
       model: formData.model,
       stock: parseInt(formData.stockQuantity),
@@ -992,9 +1044,8 @@ const ProductManager = () => {
     }
 
     setShowModal(false);
-  }, [formData, modalMode, selectedProduct, validateForm, getCategoryDisplayName, addProduct, updateProduct]);
+  }, [formData, modalMode, selectedProduct, validateForm, addProduct, updateProduct]);
 
-  // Handler principal para inputs
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     
@@ -1017,7 +1068,47 @@ const ProductManager = () => {
     }
   }, [formErrors]);
 
-  // Handlers para especificaciones
+  const handleCategoryChange = useCallback((e) => {
+    const categorySlug = e.target.value;
+    const selectedCategory = Object.values(categories).find(c => c.slug === categorySlug);
+    
+    setFormData(prev => ({
+      ...prev,
+      category: categorySlug,
+      categoryId: selectedCategory?.dbId || null,
+      categoryName: selectedCategory?.name || '',
+      subcategory: '',
+      subcategoryId: null,
+      subcategoryName: ''
+    }));
+    
+    if (selectedCategory?.subcategories) {
+      setSubcategories(Object.values(selectedCategory.subcategories));
+    } else {
+      setSubcategories([]);
+    }
+    
+    if (formErrors.category) {
+      setFormErrors(prev => ({ ...prev, category: '' }));
+    }
+  }, [categories, formErrors]);
+
+  const handleSubcategoryChange = useCallback((e) => {
+    const subcategorySlug = e.target.value;
+    const selectedSubcategory = subcategories.find(s => s.slug === subcategorySlug);
+    
+    setFormData(prev => ({
+      ...prev,
+      subcategory: subcategorySlug,
+      subcategoryId: selectedSubcategory?.dbId || null,
+      subcategoryName: selectedSubcategory?.name || ''
+    }));
+    
+    if (formErrors.subcategory) {
+      setFormErrors(prev => ({ ...prev, subcategory: '' }));
+    }
+  }, [subcategories, formErrors]);
+
   const handleSpecificationChange = useCallback((field, value) => {
     setNewSpecification(prev => {
       const updated = { ...prev, [field]: value };
@@ -1054,7 +1145,6 @@ const ProductManager = () => {
     }));
   }, []);
 
-  // Handlers para características
   const handleFeatureChange = useCallback((value) => {
     setNewFeature(value);
   }, []);
@@ -1076,7 +1166,6 @@ const ProductManager = () => {
     }));
   }, []);
 
-  // Handlers para variantes
   const handleVariantChange = useCallback((field, value) => {
     setNewVariant(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -1098,7 +1187,6 @@ const ProductManager = () => {
     }));
   }, []);
 
-  // Handlers para tags
   const handleTagChange = useCallback((value) => {
     setNewTag(value);
   }, []);
@@ -1120,7 +1208,6 @@ const ProductManager = () => {
     }));
   }, []);
 
-  // Handlers para imágenes
   const handleUpdateImageField = useCallback((index, value) => {
     setFormData(prev => ({
       ...prev,
@@ -1172,7 +1259,7 @@ const ProductManager = () => {
         </div>
       </div>
 
-      {/* Filtros y búsqueda */}
+      {/* Filtros */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -1197,8 +1284,8 @@ const ProductManager = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Todas las categorías</option>
-              {CATEGORIES.map(category => (
-                <option key={category} value={category}>{getCategoryDisplayName(category)}</option>
+              {Object.values(categories).map(category => (
+                <option key={category.slug} value={category.slug}>{category.name}</option>
               ))}
             </select>
           </div>
@@ -1287,9 +1374,18 @@ const ProductManager = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
-                        {product.categoryName || product.category}
-                      </span>
+                      <div className="text-xs">
+                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full">
+                          {product.categoryName || product.category}
+                        </span>
+                        {product.subcategoryName && (
+                          <div className="mt-1">
+                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
+                              {product.subcategoryName}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatCurrency(product.price)}
@@ -1303,7 +1399,7 @@ const ProductManager = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex space-x-1">
+                      <div className="flex flex-wrap gap-1">
                         {product.isActive !== false && (
                           <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                             Activo
@@ -1358,7 +1454,7 @@ const ProductManager = () => {
         </div>
       </div>
 
-      {/* Modal completo */}
+      {/* Modal */}
       <CompleteProductModal
         showModal={showModal}
         modalMode={modalMode}
@@ -1369,9 +1465,13 @@ const ProductManager = () => {
         newFeature={newFeature}
         newVariant={newVariant}
         newTag={newTag}
+        categories={categories}
+        subcategories={subcategories}
         onClose={() => setShowModal(false)}
         onSave={handleSaveProduct}
         onInputChange={handleInputChange}
+        onCategoryChange={handleCategoryChange}
+        onSubcategoryChange={handleSubcategoryChange}
         getCategoryDisplayName={getCategoryDisplayName}
         formatCurrency={formatCurrency}
         onSpecificationChange={handleSpecificationChange}
