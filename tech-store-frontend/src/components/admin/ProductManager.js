@@ -1,6 +1,7 @@
 // src/components/admin/ProductManager.js - Versión Completa con Todas las Funcionalidades
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
+import { categoryService } from '../../services/categoryService';
 import {
   Plus,
   Search,
