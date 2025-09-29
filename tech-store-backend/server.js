@@ -4,35 +4,43 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
+import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Configuración de Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Configuración de Neon Database
+const sql = neon(process.env.DATABASE_URL);
+
+// IMPORTANTE: Configurar trust proxy para Vercel
+app.set('trust proxy', 1);
 
 // Middlewares de seguridad
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
+
+// CORS - Configuración permisiva
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://tu-dominio-vercel.vercel.app', 'https://tu-dominio.com']
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true
+  origin: true, // Permite todos los orígenes
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-JSON'],
+  maxAge: 86400
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo 100 requests por IP
-  message: 'Demasiadas peticiones, intenta de nuevo más tarde'
-});
-app.use('/api/', limiter);
+// Rate limiting - DESHABILITADO TEMPORALMENTE
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 100,
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+// app.use('/api/', limiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -54,24 +62,23 @@ app.use('/api', (req, res, next) => {
 // GET - Obtener todos los productos
 app.get('/api/products', async (req, res) => {
   try {
-    const { data: products, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
+    const products = await sql`
+      SELECT * FROM products 
+      WHERE is_active = true 
+      ORDER BY created_at DESC
+    `;
 
     res.json({
       success: true,
-      data: products || [],
-      count: products?.length || 0
+      data: products,
+      count: products.length
     });
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({
       success: false,
       error: 'Error al obtener productos',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -81,32 +88,28 @@ app.get('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const { data: product, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const products = await sql`
+      SELECT * FROM products 
+      WHERE id = ${id} AND is_active = true
+    `;
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({
-          success: false,
-          error: 'Producto no encontrado'
-        });
-      }
-      throw error;
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Producto no encontrado'
+      });
     }
 
     res.json({
       success: true,
-      data: product
+      data: products[0]
     });
   } catch (error) {
     console.error('Error fetching product:', error);
     res.status(500).json({
       success: false,
       error: 'Error al obtener producto',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -114,23 +117,47 @@ app.get('/api/products/:id', async (req, res) => {
 // POST - Crear nuevo producto
 app.post('/api/products', async (req, res) => {
   try {
-    const productData = {
-      ...req.body,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    const {
+      name, description, price, original_price, category, category_name,
+      subcategory, subcategory_name, brand, model, stock, stock_quantity,
+      image, images, is_active, is_featured, is_new, in_stock, discount,
+      rating, reviews, total_reviews, tags, warranty, shipping,
+      specifications, features, variants
+    } = req.body;
 
-    const { data: product, error } = await supabase
-      .from('products')
-      .insert([productData])
-      .select()
-      .single();
+    // Validaciones básicas
+    if (!name || !description || !price || !category || !brand) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campos requeridos: name, description, price, category, brand'
+      });
+    }
 
-    if (error) throw error;
+    const products = await sql`
+      INSERT INTO products (
+        name, description, price, original_price, category, category_name,
+        subcategory, subcategory_name, brand, model, stock, stock_quantity,
+        image, images, is_active, is_featured, is_new, in_stock, discount,
+        rating, reviews, total_reviews, tags, warranty, shipping,
+        specifications, features, variants, created_at, updated_at
+      ) VALUES (
+        ${name}, ${description}, ${price}, ${original_price || null}, 
+        ${category}, ${category_name || category}, ${subcategory || category}, 
+        ${subcategory_name || category_name || category}, ${brand}, ${model || null},
+        ${stock || stock_quantity || 0}, ${stock_quantity || stock || 0},
+        ${image || null}, ${JSON.stringify(images || [])}, 
+        ${is_active !== false}, ${is_featured || false}, ${is_new || false}, 
+        ${in_stock !== false}, ${discount || 0}, ${rating || 4.5}, 
+        ${reviews || 0}, ${total_reviews || 0}, ${JSON.stringify(tags || [])},
+        ${warranty || '12 meses de garantía'}, ${shipping || 'Envío gratis en 24-48 horas'},
+        ${JSON.stringify(specifications || [])}, ${JSON.stringify(features || [])},
+        ${JSON.stringify(variants || [])}, NOW(), NOW()
+      ) RETURNING *
+    `;
 
     res.status(201).json({
       success: true,
-      data: product,
+      data: products[0],
       message: 'Producto creado exitosamente'
     });
   } catch (error) {
@@ -138,7 +165,7 @@ app.post('/api/products', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error al crear producto',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -147,31 +174,59 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = {
-      ...req.body,
-      updated_at: new Date().toISOString()
-    };
+    const {
+      name, description, price, original_price, category, category_name,
+      subcategory, subcategory_name, brand, model, stock, stock_quantity,
+      image, images, is_active, is_featured, is_new, in_stock, discount,
+      rating, reviews, total_reviews, tags, warranty, shipping,
+      specifications, features, variants
+    } = req.body;
 
-    const { data: product, error } = await supabase
-      .from('products')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    const products = await sql`
+      UPDATE products SET
+        name = ${name},
+        description = ${description},
+        price = ${price},
+        original_price = ${original_price || null},
+        category = ${category},
+        category_name = ${category_name || category},
+        subcategory = ${subcategory || category},
+        subcategory_name = ${subcategory_name || category_name || category},
+        brand = ${brand},
+        model = ${model || null},
+        stock = ${stock || stock_quantity || 0},
+        stock_quantity = ${stock_quantity || stock || 0},
+        image = ${image || null},
+        images = ${JSON.stringify(images || [])},
+        is_active = ${is_active !== false},
+        is_featured = ${is_featured || false},
+        is_new = ${is_new || false},
+        in_stock = ${in_stock !== false},
+        discount = ${discount || 0},
+        rating = ${rating || 4.5},
+        reviews = ${reviews || 0},
+        total_reviews = ${total_reviews || 0},
+        tags = ${JSON.stringify(tags || [])},
+        warranty = ${warranty || '12 meses de garantía'},
+        shipping = ${shipping || 'Envío gratis en 24-48 horas'},
+        specifications = ${JSON.stringify(specifications || [])},
+        features = ${JSON.stringify(features || [])},
+        variants = ${JSON.stringify(variants || [])},
+        updated_at = NOW()
+      WHERE id = ${id} AND is_active = true
+      RETURNING *
+    `;
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({
-          success: false,
-          error: 'Producto no encontrado'
-        });
-      }
-      throw error;
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Producto no encontrado'
+      });
     }
 
     res.json({
       success: true,
-      data: product,
+      data: products[0],
       message: 'Producto actualizado exitosamente'
     });
   } catch (error) {
@@ -179,86 +234,41 @@ app.put('/api/products/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error al actualizar producto',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// DELETE - Eliminar producto
+// DELETE - Eliminar producto (soft delete)
 app.delete('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id);
+    const products = await sql`
+      UPDATE products 
+      SET is_active = false, updated_at = NOW()
+      WHERE id = ${id} AND is_active = true
+      RETURNING id, name
+    `;
 
-    if (error) throw error;
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Producto no encontrado'
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Producto eliminado exitosamente'
+      message: 'Producto eliminado exitosamente',
+      data: products[0]
     });
   } catch (error) {
     console.error('Error deleting product:', error);
     res.status(500).json({
       success: false,
       error: 'Error al eliminar producto',
-      details: error.message
-    });
-  }
-});
-
-// =====================
-// RUTAS DE BÚSQUEDA
-// =====================
-
-// GET - Buscar productos
-app.get('/api/products/search/:term', async (req, res) => {
-  try {
-    const { term } = req.params;
-    const { category, brand, minPrice, maxPrice } = req.query;
-
-    let query = supabase
-      .from('products')
-      .select('*');
-
-    // Búsqueda por texto
-    if (term && term !== 'all') {
-      query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%,brand.ilike.%${term}%`);
-    }
-
-    // Filtros adicionales
-    if (category) {
-      query = query.eq('category', category);
-    }
-    if (brand) {
-      query = query.eq('brand', brand);
-    }
-    if (minPrice) {
-      query = query.gte('price', parseFloat(minPrice));
-    }
-    if (maxPrice) {
-      query = query.lte('price', parseFloat(maxPrice));
-    }
-
-    const { data: products, error } = await query.order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    res.json({
-      success: true,
-      data: products || [],
-      count: products?.length || 0,
-      searchTerm: term
-    });
-  } catch (error) {
-    console.error('Error searching products:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al buscar productos',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -266,13 +276,27 @@ app.get('/api/products/search/:term', async (req, res) => {
 // =====================
 // RUTA DE SALUD
 // =====================
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'TechStore API funcionando correctamente',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test de conexión a la base de datos
+    await sql`SELECT 1`;
+    
+    res.json({
+      success: true,
+      message: 'TechStore API funcionando correctamente',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      database: 'Connected'
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: 'Problemas de conectividad',
+      timestamp: new Date().toISOString(),
+      database: 'Disconnected',
+      error: error.message
+    });
+  }
 });
 
 // Manejo de rutas no encontradas
@@ -299,6 +323,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+  console.log(`💾 Database: Neon PostgreSQL`);
 });
 
 export default app;
