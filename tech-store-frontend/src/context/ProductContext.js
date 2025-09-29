@@ -1,6 +1,7 @@
-// src/context/ProductContext.js - SOLO SUPABASE
+// src/context/ProductContext.js - Con Supabase
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { sampleProducts } from '../data/products';
 
 const ProductContext = createContext();
 
@@ -18,8 +19,8 @@ export const useProducts = () => {
 };
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(sampleProducts);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Función para normalizar productos de Supabase
@@ -52,7 +53,8 @@ export const ProductProvider = ({ children }) => {
       features: Array.isArray(product.features) ? product.features : [],
       variants: Array.isArray(product.variants) ? product.variants : [],
       createdAt: product.created_at,
-      updatedAt: product.updated_at
+      updatedAt: product.updated_at,
+      isFromAdmin: true
     };
   }, []);
 
@@ -60,7 +62,6 @@ export const ProductProvider = ({ children }) => {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
     try {
       const { data, error } = await supabase
         .from('products')
@@ -71,12 +72,13 @@ export const ProductProvider = ({ children }) => {
       if (error) throw error;
 
       const normalizedProducts = (data || []).map(normalizeProduct);
-      setProducts(normalizedProducts);
+      const allProducts = [...sampleProducts, ...normalizedProducts];
+      setProducts(allProducts);
       
     } catch (error) {
       console.error('Error fetching products:', error);
       setError('Error al cargar productos');
-      setProducts([]);
+      setProducts(sampleProducts);
     } finally {
       setLoading(false);
     }
@@ -127,7 +129,7 @@ export const ProductProvider = ({ children }) => {
       if (error) throw error;
 
       const newProduct = normalizeProduct(data);
-      setProducts(prev => [newProduct, ...prev]);
+      setProducts(prev => [...prev, newProduct]);
 
       return newProduct;
     } catch (error) {
@@ -260,6 +262,8 @@ export const ProductProvider = ({ children }) => {
   // Estadísticas
   const getProductStats = useCallback(() => {
     const totalProducts = products.length;
+    const apiProducts = products.filter(p => p.isFromAdmin).length;
+    const staticProducts = products.filter(p => !p.isFromAdmin).length;
     const inStockProducts = products.filter(p => p.stockQuantity > 0).length;
     const outOfStockProducts = totalProducts - inStockProducts;
     const featuredProducts = products.filter(p => p.isFeatured).length;
@@ -276,6 +280,8 @@ export const ProductProvider = ({ children }) => {
     
     return {
       total: totalProducts,
+      api: apiProducts,
+      static: staticProducts,
       inStock: inStockProducts,
       outOfStock: outOfStockProducts,
       featured: featuredProducts,
