@@ -92,34 +92,34 @@ export const AuthProvider = ({ children }) => {
 
   // LOGIN - MEMOIZADO
   const login = useCallback(async (email, password) => {
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
+  
+  try {
+    const result = await authService.login(email, password);
     
-    try {
-      const result = await authService.login(email, password);
-      
-      // Guardar datos en localStorage
-      localStorage.setItem('authToken', result.token);
-      localStorage.setItem('userData', JSON.stringify(result.user));
-      
-      // Actualizar estado
-      setUser(result.user);
-      setIsAuthenticated(true);
-      setAuthModalOpen(false);
-      
-      showNotification(`¡Bienvenido ${result.user.firstName}!`, 'success');
-      
-      return { success: true, user: result.user };
-    } catch (error) {
-      const errorMessage = error.message || 'Error en el login';
-      setError(errorMessage);
-      showNotification(errorMessage, 'error');
-      return { success: false, error: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
-
+    // IMPORTANTE: Guardar con el rol correcto
+    localStorage.setItem('authToken', result.token);
+    localStorage.setItem('userData', JSON.stringify(result.user));
+    
+    console.log('Usuario logueado:', result.user); // Para debug
+    
+    setUser(result.user);
+    setIsAuthenticated(true);
+    setAuthModalOpen(false);
+    
+    showNotification(`¡Bienvenido ${result.user.firstName}!`, 'success');
+    
+    return { success: true, user: result.user };
+  } catch (error) {
+    const errorMessage = error.message || 'Error en el login';
+    setError(errorMessage);
+    showNotification(errorMessage, 'error');
+    return { success: false, error: errorMessage };
+  } finally {
+    setLoading(false);
+  }
+}, [showNotification]);
   // REGISTRO - MEMOIZADO
   const register = useCallback(async (userData) => {
     setLoading(true);
