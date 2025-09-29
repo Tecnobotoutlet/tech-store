@@ -1,4 +1,4 @@
-// Configuración real de Wompi
+// src/services/wompiService.js - Integración completa con Wompi
 const WOMPI_CONFIG = {
   baseURL: process.env.NODE_ENV === 'production' 
     ? 'https://production.wompi.co/v1' 
@@ -6,13 +6,16 @@ const WOMPI_CONFIG = {
   
   publicKey: process.env.NODE_ENV === 'production'
     ? process.env.REACT_APP_WOMPI_PUBLIC_KEY_PROD
-    : process.env.REACT_APP_WOMPI_PUBLIC_KEY || 'pub_sandbox_P2hlhnpGO1cE7lFEYbwwJe9gVBMzHU90',
+    : process.env.REACT_APP_WOMPI_PUBLIC_KEY || 'pub_test_KaQFpojdIbESo6SVCqEVvidZd6bdCbC3',
+  
+  apiURL: process.env.REACT_APP_API_URL || 'http://localhost:3001'
 };
 
 class WompiService {
   constructor() {
     this.baseURL = WOMPI_CONFIG.baseURL;
     this.publicKey = WOMPI_CONFIG.publicKey;
+    this.apiURL = WOMPI_CONFIG.apiURL;
   }
 
   /**
@@ -84,41 +87,33 @@ class WompiService {
   }
 
   /**
-   * Crear fuente de pago
+   * Crear transacción a través del backend (RECOMENDADO)
    */
-  async createPaymentSource(token, customerEmail, acceptanceToken) {
+  async createTransactionViaBackend(orderData) {
     try {
-      const paymentSourceData = {
-        type: 'CARD',
-        token: token,
-        customer_email: customerEmail,
-        acceptance_token: acceptanceToken
-      };
-
-      const response = await fetch(`${this.baseURL}/payment_sources`, {
+      const response = await fetch(`${this.apiURL}/api/wompi/create-transaction`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.publicKey}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
-        body: JSON.stringify(paymentSourceData)
+        body: JSON.stringify(orderData)
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error?.message || 'Error creando fuente de pago');
+        const error = await response.json();
+        throw new Error(error.message || 'Error creando transacción');
       }
 
-      return result.data;
+      return await response.json();
     } catch (error) {
-      console.error('Error creating payment source:', error);
+      console.error('Error en createTransactionViaBackend:', error);
       throw error;
     }
   }
 
   /**
-   * Crear transacción
+   * Crear transacción directa (solo para desarrollo)
    */
   async createTransaction(transactionData) {
     try {
@@ -171,82 +166,91 @@ class WompiService {
   }
 
   /**
-   * Procesar pago completo (método principal)
+   * Verificar transacción a través del backend
    */
-  async processPayment({
-    cardData,
+  async checkTransactionStatus(transactionId) {
+    try {
+      const response = await fetch(`${this.apiURL}/api/wompi/transaction-status/${transactionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Error verificando estado');
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error verificando transacción:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Procesar pago con tarjeta (Método principal)
+   */
+  async processCardPayment({
+    orderId,
     amount,
     currency = 'COP',
+    cardData,
     customerData,
     shippingAddress,
-    items
+    installments = 1
   }) {
     try {
       const reference = this.generateReference();
-      console.log('Starting payment process for reference:', reference);
+      console.log('Starting card payment for reference:', reference);
 
-      // 1. Obtener información del merchant
-      console.log('Getting merchant info...');
+      // 1. Obtener token de aceptación
       const merchantInfo = await this.getMerchantInfo();
       const acceptanceToken = merchantInfo.presigned_acceptance.acceptance_token;
 
       // 2. Tokenizar tarjeta
-      console.log('Tokenizing card...');
       const cardToken = await this.tokenizeCard(cardData);
 
-      // 3. Crear fuente de pago
-      console.log('Creating payment source...');
-      const paymentSource = await this.createPaymentSource(
-        cardToken.id,
-        customerData.email,
-        acceptanceToken
-      );
-
-      // 4. Crear transacción
-      console.log('Creating transaction...');
-      const transactionData = {
-        amount_in_cents: Math.round(amount * 100),
+      // 3. Crear transacción a través del backend
+      const transaction = await this.createTransactionViaBackend({
+        orderId,
+        amount,
         currency,
-        signature: this.generateIntegritySignature(reference, amount),
-        customer_email: customerData.email,
-        payment_method: {
-          type: 'CARD',
-          installments: 1
-        },
-        payment_source_id: paymentSource.id,
         reference,
-        customer_data: {
-          phone_number: customerData.phone,
-          full_name: `${customerData.firstName} ${customerData.lastName}`,
-          legal_id: customerData.document,
-          legal_id_type: customerData.documentType || 'CC'
+        customerEmail: customerData.email,
+        paymentMethod: {
+          type: 'CARD',
+          token: cardToken.id,
+          installments: installments
         },
-        shipping_address: {
-          address_line_1: shippingAddress.address,
-          address_line_2: shippingAddress.addressDetails || '',
-          country: 'CO',
-          region: shippingAddress.department,
+        acceptanceToken: acceptanceToken,
+        customerData: {
+          userId: customerData.userId,
+          firstName: customerData.firstName,
+          lastName: customerData.lastName,
+          phone: customerData.phone,
+          document: customerData.document,
+          documentType: customerData.documentType || 'CC'
+        },
+        shippingAddress: {
+          address: shippingAddress.address,
+          addressDetails: shippingAddress.addressDetails,
           city: shippingAddress.city,
-          name: `${customerData.firstName} ${customerData.lastName}`,
-          phone_number: customerData.phone,
-          postal_code: shippingAddress.postalCode || ''
+          state: shippingAddress.state,
+          postalCode: shippingAddress.postalCode,
+          phone: shippingAddress.phone || customerData.phone
         }
-      };
-
-      const transaction = await this.createTransaction(transactionData);
-
-      console.log('Transaction created:', transaction);
+      });
 
       return {
-        success: true,
-        transaction,
-        reference,
-        status: transaction.status,
-        transactionId: transaction.id
+        success: transaction.success,
+        transaction: transaction.transaction,
+        reference: transaction.reference,
+        status: transaction.transaction?.status,
+        transactionId: transaction.transaction?.id
       };
 
     } catch (error) {
-      console.error('Error processing payment:', error);
+      console.error('Error processing card payment:', error);
       return {
         success: false,
         error: error.message,
@@ -256,27 +260,133 @@ class WompiService {
   }
 
   /**
-   * Generar firma de integridad
-   * En producción esto debería hacerse en el backend
+   * Procesar pago con Nequi
    */
-  generateIntegritySignature(reference, amount) {
-    // Para sandbox, podemos generar una firma básica
-    // En producción, esto DEBE hacerse en el backend con la clave privada
-    const amountInCents = Math.round(amount * 100);
-    const currency = 'COP';
-    const timestamp = Date.now();
-    
-    // Esta es una firma simplificada para el sandbox
-    return `${reference}${amountInCents}${currency}${timestamp}`;
+  async processNequiPayment({
+    orderId,
+    amount,
+    phoneNumber,
+    customerData,
+    shippingAddress
+  }) {
+    try {
+      const merchantInfo = await this.getMerchantInfo();
+      const acceptanceToken = merchantInfo.presigned_acceptance.acceptance_token;
+
+      const transaction = await this.createTransactionViaBackend({
+        orderId,
+        amount,
+        currency: 'COP',
+        customerEmail: customerData.email,
+        paymentMethod: {
+          type: 'NEQUI',
+          phone_number: phoneNumber
+        },
+        acceptanceToken: acceptanceToken,
+        customerData: {
+          userId: customerData.userId,
+          firstName: customerData.firstName,
+          lastName: customerData.lastName,
+          phone: phoneNumber,
+          document: customerData.document,
+          documentType: customerData.documentType || 'CC'
+        },
+        shippingAddress
+      });
+
+      return transaction;
+    } catch (error) {
+      console.error('Error processing Nequi payment:', error);
+      throw error;
+    }
   }
 
   /**
-   * Validar respuesta de webhook (para implementar en backend)
+   * Obtener bancos para PSE
    */
-  validateWebhookSignature(payload, signature, eventsKey) {
-    // Implementar validación de webhook
-    // Esto debe hacerse en el backend
-    return true;
+  async getPSEBanks() {
+    try {
+      const response = await fetch(`${this.baseURL}/pse/financial_institutions`, {
+        headers: {
+          'Authorization': `Bearer ${this.publicKey}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Error obteniendo bancos');
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error obteniendo bancos PSE:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Procesar pago con PSE
+   */
+  async processPSEPayment({
+    orderId,
+    amount,
+    customerData,
+    pseData,
+    shippingAddress
+  }) {
+    try {
+      const merchantInfo = await this.getMerchantInfo();
+      const acceptanceToken = merchantInfo.presigned_acceptance.acceptance_token;
+
+      const transaction = await this.createTransactionViaBackend({
+        orderId,
+        amount,
+        currency: 'COP',
+        customerEmail: customerData.email,
+        paymentMethod: {
+          type: 'PSE',
+          user_type: pseData.userType, // 0 = Persona, 1 = Empresa
+          user_legal_id_type: pseData.userLegalIdType, // CC, NIT, CE, etc
+          user_legal_id: pseData.userLegalId,
+          financial_institution_code: pseData.bankCode,
+          payment_description: `Pedido #${orderId}`
+        },
+        acceptanceToken: acceptanceToken,
+        customerData: {
+          userId: customerData.userId,
+          firstName: customerData.firstName,
+          lastName: customerData.lastName,
+          phone: customerData.phone,
+          document: pseData.userLegalId,
+          documentType: pseData.userLegalIdType
+        },
+        shippingAddress
+      });
+
+      return transaction;
+    } catch (error) {
+      console.error('Error processing PSE payment:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener métodos de pago disponibles
+   */
+  async getPaymentMethods() {
+    try {
+      const response = await fetch(`${this.baseURL}/payment_methods`, {
+        headers: {
+          'Authorization': `Bearer ${this.publicKey}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Error obteniendo métodos de pago');
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error obteniendo métodos de pago:', error);
+      return [];
+    }
   }
 
   /**
@@ -284,7 +394,6 @@ class WompiService {
    */
   async processTestPayment(paymentData) {
     try {
-      // Para el sandbox, usar las tarjetas de prueba oficiales de Wompi
       const testCards = {
         '4242424242424242': { status: 'APPROVED', type: 'visa' },
         '5555555555554444': { status: 'APPROVED', type: 'mastercard' },
@@ -302,7 +411,7 @@ class WompiService {
           success: testResult.status === 'APPROVED',
           status: testResult.status,
           reference,
-          transactionId: `TXN_${Date.now()}`,
+          transactionId: `TXN_TEST_${Date.now()}`,
           message: testResult.status === 'APPROVED' 
             ? 'Pago procesado exitosamente' 
             : 'Pago rechazado',
@@ -311,8 +420,8 @@ class WompiService {
         };
       }
 
-      // Si no es una tarjeta de prueba, procesar normalmente
-      return await this.processPayment(paymentData);
+      // Si no es tarjeta de prueba, procesar normalmente
+      return await this.processCardPayment(paymentData);
 
     } catch (error) {
       console.error('Error processing test payment:', error);
@@ -330,24 +439,20 @@ class WompiService {
   validateCardData(cardData) {
     const errors = {};
 
-    // Validar número de tarjeta (algoritmo Luhn)
     if (!cardData.number || !this.isValidCardNumber(cardData.number.replace(/\s/g, ''))) {
       errors.number = 'Número de tarjeta inválido';
     }
 
-    // Validar fecha de vencimiento
     if (!cardData.exp_month || !cardData.exp_year) {
       errors.expiry = 'Fecha de vencimiento requerida';
     } else if (this.isCardExpired(cardData.exp_month, cardData.exp_year)) {
       errors.expiry = 'Tarjeta vencida';
     }
 
-    // Validar CVV
     if (!cardData.cvc || cardData.cvc.length < 3) {
       errors.cvc = 'CVC inválido';
     }
 
-    // Validar nombre
     if (!cardData.card_holder || cardData.card_holder.trim().length < 2) {
       errors.card_holder = 'Nombre del titular requerido';
     }
@@ -409,6 +514,29 @@ class WompiService {
   }
 
   /**
+   * Detectar tipo de tarjeta
+   */
+  getCardType(number) {
+    const cleanNumber = number.replace(/\s/g, '');
+    
+    if (/^4/.test(cleanNumber)) return 'visa';
+    if (/^5[1-5]/.test(cleanNumber)) return 'mastercard';
+    if (/^3[47]/.test(cleanNumber)) return 'amex';
+    if (/^6(?:011|5)/.test(cleanNumber)) return 'discover';
+    
+    return 'unknown';
+  }
+
+  /**
+   * Formatear número de tarjeta
+   */
+  formatCardNumber(number) {
+    const cleaned = number.replace(/\s/g, '');
+    const chunks = cleaned.match(/.{1,4}/g) || [];
+    return chunks.join(' ');
+  }
+
+  /**
    * Obtener información de tarjetas de prueba
    */
   getTestCards() {
@@ -417,27 +545,66 @@ class WompiService {
         {
           number: '4242 4242 4242 4242',
           type: 'Visa',
-          description: 'Pago exitoso'
+          description: 'Pago exitoso',
+          cvc: '123',
+          expMonth: '12',
+          expYear: '2025'
         },
         {
           number: '5555 5555 5555 4444',
           type: 'MasterCard',
-          description: 'Pago exitoso'
+          description: 'Pago exitoso',
+          cvc: '123',
+          expMonth: '12',
+          expYear: '2025'
         }
       ],
       decline: [
         {
           number: '4000 0000 0000 0002',
           type: 'Visa',
-          description: 'Tarjeta rechazada'
+          description: 'Tarjeta rechazada',
+          cvc: '123',
+          expMonth: '12',
+          expYear: '2025'
         },
         {
           number: '4000 0000 0000 9995',
           type: 'Visa',
-          description: 'Fondos insuficientes'
+          description: 'Fondos insuficientes',
+          cvc: '123',
+          expMonth: '12',
+          expYear: '2025'
         }
       ]
     };
+  }
+
+  /**
+   * Generar firma de integridad (para desarrollo local)
+   * NOTA: En producción esto DEBE hacerse en el backend
+   */
+  generateIntegritySignature(reference, amount) {
+    const amountInCents = Math.round(amount * 100);
+    const currency = 'COP';
+    const timestamp = Date.now();
+    
+    // Firma simplificada para desarrollo
+    return `${reference}${amountInCents}${currency}${timestamp}`;
+  }
+
+  /**
+   * Formatear monto para Wompi (centavos)
+   */
+  formatAmountForWompi(amount) {
+    return Math.round(amount * 100);
+  }
+
+  /**
+   * Formatear monto desde Wompi (de centavos a pesos)
+   */
+  formatAmountFromWompi(amountInCents) {
+    return amountInCents / 100;
   }
 }
 
