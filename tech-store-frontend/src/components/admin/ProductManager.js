@@ -804,6 +804,9 @@ const ProductManager = () => {
   const [newFeature, setNewFeature] = useState('');
   const [newVariant, setNewVariant] = useState({ name: '', color: '#000000', available: true });
   const [newTag, setNewTag] = useState('');
+  const [categories, setCategories] = useState({});
+  const [subcategories, setSubcategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   // Función memoizada para formatear moneda
   const formatCurrency = useCallback((amount) => {
