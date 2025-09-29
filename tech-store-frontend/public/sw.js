@@ -81,7 +81,12 @@ self.addEventListener('activate', event => {
 // Interceptar peticiones de red
 self.addEventListener('fetch', event => {
   const { request } = event;
-  const url = new URL(request.url);
+  const url = new URL(request.url);}
+
+  // NUEVO: Ignorar peticiones que no sean GET en general para APIs de Supabase
+  if (request.method !== 'GET' && url.hostname.includes('supabase')) {
+    return;
+  }
 
   // Ignorar URLs excluidas
   if (EXCLUDED_URLS.some(excludedUrl => url.pathname.startsWith(excludedUrl))) {
