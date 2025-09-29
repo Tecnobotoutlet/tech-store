@@ -19,7 +19,7 @@ app.use(helmet());
 app.use(compression());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://tech-store-bmpro.vercel.app', 'https://tech-store-blush-six.vercel.app']
+    ? ['https://tech-store-blush-six.vercel.app', 'https://tech-store-bmpro.vercel.app']
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true
 }));
