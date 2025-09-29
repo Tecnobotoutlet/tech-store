@@ -14,27 +14,33 @@ const PORT = process.env.PORT || 3001;
 // Configuración de Neon Database
 const sql = neon(process.env.DATABASE_URL);
 
-// Middlewares de seguridad
-app.use(helmet());
-app.use(compression());
-app.use(cors({
-  origin: true, // Permite todos los orígenes temporalmente
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
-
-// Configurar trust proxy para Vercel
+// IMPORTANTE: Configurar trust proxy para Vercel
 app.set('trust proxy', 1);
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000, // Incrementar límite
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/', limiter);
+// Middlewares de seguridad
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(compression());
+
+// CORS - Configuración permisiva
+app.use(cors({
+  origin: true, // Permite todos los orígenes
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-JSON'],
+  maxAge: 86400
+}));
+
+// Rate limiting - DESHABILITADO TEMPORALMENTE
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 100,
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+// app.use('/api/', limiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -268,166 +274,6 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // =====================
-// RUTAS DE BÚSQUEDA
-// =====================
-
-// GET - Buscar productos
-app.get('/api/products/search/:term', async (req, res) => {
-  try {
-    const { term } = req.params;
-    const { category, brand, minPrice, maxPrice, limit = 50 } = req.query;
-
-    let query = `
-      SELECT * FROM products 
-      WHERE is_active = true
-    `;
-    let params = [];
-    let paramIndex = 1;
-
-    // Búsqueda por texto
-    if (term && term !== 'all') {
-      query += ` AND (
-        name ILIKE $${paramIndex} OR 
-        description ILIKE $${paramIndex} OR 
-        brand ILIKE $${paramIndex} OR
-        category_name ILIKE $${paramIndex}
-      )`;
-      params.push(`%${term}%`);
-      paramIndex++;
-    }
-
-    // Filtros adicionales
-    if (category) {
-      query += ` AND category = $${paramIndex}`;
-      params.push(category);
-      paramIndex++;
-    }
-    if (brand) {
-      query += ` AND brand = $${paramIndex}`;
-      params.push(brand);
-      paramIndex++;
-    }
-    if (minPrice) {
-      query += ` AND price >= $${paramIndex}`;
-      params.push(parseFloat(minPrice));
-      paramIndex++;
-    }
-    if (maxPrice) {
-      query += ` AND price <= $${paramIndex}`;
-      params.push(parseFloat(maxPrice));
-      paramIndex++;
-    }
-
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
-    params.push(parseInt(limit));
-
-    // Ejecutar query usando template literals de Neon
-    const products = await sql.unsafe(query, params);
-
-    res.json({
-      success: true,
-      data: products,
-      count: products.length,
-      searchTerm: term,
-      filters: { category, brand, minPrice, maxPrice }
-    });
-  } catch (error) {
-    console.error('Error searching products:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al buscar productos',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// GET - Productos por categoría
-app.get('/api/products/category/:category', async (req, res) => {
-  try {
-    const { category } = req.params;
-    const { limit = 20 } = req.query;
-
-    const products = await sql`
-      SELECT * FROM products 
-      WHERE category = ${category} AND is_active = true
-      ORDER BY created_at DESC
-      LIMIT ${parseInt(limit)}
-    `;
-
-    res.json({
-      success: true,
-      data: products,
-      count: products.length,
-      category
-    });
-  } catch (error) {
-    console.error('Error fetching products by category:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener productos por categoría',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// =====================
-// RUTAS DE ESTADÍSTICAS
-// =====================
-
-// GET - Estadísticas del admin
-app.get('/api/admin/stats', async (req, res) => {
-  try {
-    const totalProducts = await sql`SELECT COUNT(*) as count FROM products WHERE is_active = true`;
-    const inStockProducts = await sql`SELECT COUNT(*) as count FROM products WHERE is_active = true AND in_stock = true AND stock_quantity > 0`;
-    const featuredProducts = await sql`SELECT COUNT(*) as count FROM products WHERE is_active = true AND is_featured = true`;
-    const newProducts = await sql`SELECT COUNT(*) as count FROM products WHERE is_active = true AND is_new = true`;
-    
-    const categoryStats = await sql`
-      SELECT category_name, COUNT(*) as count 
-      FROM products 
-      WHERE is_active = true 
-      GROUP BY category_name 
-      ORDER BY count DESC
-    `;
-
-    const brandStats = await sql`
-      SELECT brand, COUNT(*) as count 
-      FROM products 
-      WHERE is_active = true 
-      GROUP BY brand 
-      ORDER BY count DESC 
-      LIMIT 10
-    `;
-
-    res.json({
-      success: true,
-      data: {
-        total: parseInt(totalProducts[0].count),
-        inStock: parseInt(inStockProducts[0].count),
-        outOfStock: parseInt(totalProducts[0].count) - parseInt(inStockProducts[0].count),
-        featured: parseInt(featuredProducts[0].count),
-        new: parseInt(newProducts[0].count),
-        byCategory: categoryStats.reduce((acc, item) => {
-          acc[item.category_name] = parseInt(item.count);
-          return acc;
-        }, {}),
-        topBrands: brandStats.map(item => ({
-          brand: item.brand,
-          count: parseInt(item.count)
-        }))
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching admin stats:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener estadísticas',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// =====================
 // RUTA DE SALUD
 // =====================
 app.get('/api/health', async (req, res) => {
@@ -449,67 +295,6 @@ app.get('/api/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       database: 'Disconnected',
       error: error.message
-    });
-  }
-});
-
-// =====================
-// ENDPOINT PARA MIGRACIONES (temporal)
-// =====================
-app.post('/api/migrate', async (req, res) => {
-  try {
-    // Crear tabla products si no existe
-    await sql`
-      CREATE TABLE IF NOT EXISTS products (
-        id BIGSERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        price DECIMAL(10,2) NOT NULL,
-        original_price DECIMAL(10,2),
-        category VARCHAR(100) NOT NULL,
-        category_name VARCHAR(100),
-        subcategory VARCHAR(100),
-        subcategory_name VARCHAR(100),
-        brand VARCHAR(100) NOT NULL,
-        model VARCHAR(100),
-        stock INTEGER DEFAULT 0,
-        stock_quantity INTEGER DEFAULT 0,
-        image TEXT,
-        images JSONB DEFAULT '[]'::jsonb,
-        is_active BOOLEAN DEFAULT true,
-        is_featured BOOLEAN DEFAULT false,
-        is_new BOOLEAN DEFAULT false,
-        in_stock BOOLEAN DEFAULT true,
-        discount INTEGER DEFAULT 0,
-        rating DECIMAL(3,2) DEFAULT 4.5,
-        reviews INTEGER DEFAULT 0,
-        total_reviews INTEGER DEFAULT 0,
-        tags JSONB DEFAULT '[]'::jsonb,
-        warranty VARCHAR(255) DEFAULT '12 meses de garantía',
-        shipping VARCHAR(255) DEFAULT 'Envío gratis en 24-48 horas',
-        specifications JSONB DEFAULT '[]'::jsonb,
-        features JSONB DEFAULT '[]'::jsonb,
-        variants JSONB DEFAULT '[]'::jsonb,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      )
-    `;
-
-    // Crear índices
-    await sql`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_products_is_active ON products(is_active)`;
-
-    res.json({
-      success: true,
-      message: 'Tablas creadas exitosamente'
-    });
-  } catch (error) {
-    console.error('Error in migration:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error en migración',
-      details: error.message
     });
   }
 });
