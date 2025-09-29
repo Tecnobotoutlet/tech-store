@@ -5,7 +5,7 @@ import { sampleProducts } from '../data/products';
 const ProductContext = createContext();
 
 // Configuración de la API
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://tech-store-backend-git-main-tecnobotoutlets-projects.vercel.app/api';
+const API_BASE_URL = '/api';
 
 export const useProducts = () => {
   const context = useContext(ProductContext);
