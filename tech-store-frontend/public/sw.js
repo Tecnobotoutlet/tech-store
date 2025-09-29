@@ -81,11 +81,11 @@ self.addEventListener('activate', event => {
 // Interceptar peticiones de red
 self.addEventListener('fetch', event => {
   const { request } = event;
-  const url = new URL(request.url);}
+  const url = new URL(request.url);
 
   // NUEVO: Ignorar peticiones que no sean GET en general para APIs de Supabase
-  if (request.method !== 'GET' && url.hostname.includes('supabase')) {
-    return;
+  if (url.hostname.includes('supabase.co') && request.method !== 'GET') {
+    return fetch(request);
   }
 
   // Ignorar URLs excluidas
@@ -148,7 +148,7 @@ async function cacheFirst(request) {
     }
 
     const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
+    if (networkResponse.ok && request.method === 'GET') {
       cache.put(request, networkResponse.clone());
     }
     return networkResponse;
