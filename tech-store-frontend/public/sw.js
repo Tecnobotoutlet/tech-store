@@ -120,6 +120,11 @@ self.addEventListener('fetch', event => {
 
 // Estrategia Cache-First
 async function cacheFirst(request) {
+  // CRÍTICO: Solo cachear peticiones GET
+  if (request.method !== 'GET') {
+    return fetch(request);
+  }
+
   try {
     const cache = await caches.open(CACHE_NAME);
     const cachedResponse = await cache.match(request);
@@ -151,9 +156,13 @@ async function cacheFirst(request) {
     });
   }
 }
-
 // Estrategia Network-First para navegación
 async function networkFirstNavigation(request) {
+  // Solo cachear navegaciones GET
+  if (request.method !== 'GET') {
+    return fetch(request);
+  }
+
   try {
     const networkResponse = await fetch(request);
     
@@ -174,7 +183,6 @@ async function networkFirstNavigation(request) {
       return cachedResponse;
     }
     
-    // Mostrar página offline personalizada
     const offlineResponse = await cache.match(OFFLINE_URL);
     return offlineResponse || new Response('Offline', { 
       status: 503,
@@ -182,9 +190,13 @@ async function networkFirstNavigation(request) {
     });
   }
 }
-
 // Estrategia Network-First para imágenes
 async function networkFirstImage(request) {
+  // Solo cachear imágenes GET
+  if (request.method !== 'GET') {
+    return fetch(request);
+  }
+
   try {
     const networkResponse = await fetch(request);
     
@@ -203,7 +215,6 @@ async function networkFirstImage(request) {
       return cachedResponse;
     }
     
-    // Imagen placeholder offline
     return new Response(`
       <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
         <rect width="100%" height="100%" fill="#f3f4f6"/>
@@ -216,7 +227,6 @@ async function networkFirstImage(request) {
     });
   }
 }
-
 // Estrategia Network-First para API
 async function networkFirstAPI(request) {
   try {
