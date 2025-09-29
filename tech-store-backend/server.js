@@ -18,10 +18,10 @@ const sql = neon(process.env.DATABASE_URL);
 app.use(helmet());
 app.use(compression());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://tech-store-blush-six.vercel.app', 'https://tech-store-bmpro.vercel.app']
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true
+  origin: true, // Permite todos los orígenes temporalmente
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Configurar trust proxy para Vercel
@@ -29,9 +29,10 @@ app.set('trust proxy', 1);
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo 100 requests por IP
-  message: { error: 'Demasiadas peticiones, intenta de nuevo más tarde' }
+  windowMs: 15 * 60 * 1000,
+  max: 1000, // Incrementar límite
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
