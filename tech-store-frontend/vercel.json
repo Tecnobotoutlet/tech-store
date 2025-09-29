@@ -1,8 +1,1 @@
-{
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://tech-store-backend-git-main-tecnobotoutlets-projects.vercel.app/api/:path*"
-    }
-  ]
-}
+
