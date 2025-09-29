@@ -22,27 +22,34 @@ export const ProductProvider = ({ children }) => {
 
   // Función para hacer llamadas a la API
   const apiCall = useCallback(async (endpoint, options = {}) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        ...options,
-      });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      mode: 'cors', // Explícito
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-      }
-
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
+    // Si es HTML (error), lanzar error específico
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('La respuesta no es JSON - posible error de servidor');
     }
-  }, []);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}, []);
 
   // Función para normalizar productos (backend vs frontend compatibility)
   const normalizeProduct = useCallback((product) => {
