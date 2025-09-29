@@ -1,7 +1,6 @@
-// src/context/ProductContext.js - Con Supabase
+// src/context/ProductContext.js - Solo Supabase
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { sampleProducts } from '../data/products';
 
 const ProductContext = createContext();
 
@@ -19,8 +18,8 @@ export const useProducts = () => {
 };
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState(sampleProducts);
-  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Función para normalizar productos de Supabase
@@ -53,8 +52,7 @@ export const ProductProvider = ({ children }) => {
       features: Array.isArray(product.features) ? product.features : [],
       variants: Array.isArray(product.variants) ? product.variants : [],
       createdAt: product.created_at,
-      updatedAt: product.updated_at,
-      isFromAdmin: true
+      updatedAt: product.updated_at
     };
   }, []);
 
@@ -72,13 +70,12 @@ export const ProductProvider = ({ children }) => {
       if (error) throw error;
 
       const normalizedProducts = (data || []).map(normalizeProduct);
-      const allProducts = [...sampleProducts, ...normalizedProducts];
-      setProducts(allProducts);
+      setProducts(normalizedProducts);
       
     } catch (error) {
       console.error('Error fetching products:', error);
       setError('Error al cargar productos');
-      setProducts(sampleProducts);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -129,7 +126,7 @@ export const ProductProvider = ({ children }) => {
       if (error) throw error;
 
       const newProduct = normalizeProduct(data);
-      setProducts(prev => [...prev, newProduct]);
+      setProducts(prev => [newProduct, ...prev]);
 
       return newProduct;
     } catch (error) {
@@ -262,8 +259,6 @@ export const ProductProvider = ({ children }) => {
   // Estadísticas
   const getProductStats = useCallback(() => {
     const totalProducts = products.length;
-    const apiProducts = products.filter(p => p.isFromAdmin).length;
-    const staticProducts = products.filter(p => !p.isFromAdmin).length;
     const inStockProducts = products.filter(p => p.stockQuantity > 0).length;
     const outOfStockProducts = totalProducts - inStockProducts;
     const featuredProducts = products.filter(p => p.isFeatured).length;
@@ -280,8 +275,6 @@ export const ProductProvider = ({ children }) => {
     
     return {
       total: totalProducts,
-      api: apiProducts,
-      static: staticProducts,
       inStock: inStockProducts,
       outOfStock: outOfStockProducts,
       featured: featuredProducts,
