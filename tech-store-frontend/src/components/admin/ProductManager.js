@@ -24,6 +24,8 @@ import {
   MinusCircle
 } from 'lucide-react';
 
+let isCreatingProduct = false;
+
 // Constantes
 const BRANDS = [
   'Apple',
