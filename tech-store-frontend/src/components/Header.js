@@ -13,7 +13,8 @@ const Header = ({
   onNewProductsClick,
   onBrandsClick,
   onSupportClick,
-  onHomeClick
+  onHomeClick,
+  onProfileClick
 }) => {
   const cartContext = useCart();
   const authContext = useAuth();
@@ -94,16 +95,20 @@ const Header = ({
   };
 
   const handleMyProfile = () => {
-    setShowUserMenu(false);
-    setShowMobileMenu(false);
-    alert('Funcionalidad de "Mi Perfil" próximamente');
-  };
+  setShowUserMenu(false);
+  setShowMobileMenu(false);
+  if (onProfileClick) {
+    onProfileClick();
+  }
+};
 
   const handleMyOrders = () => {
-    setShowUserMenu(false);
-    setShowMobileMenu(false);
-    alert('Funcionalidad de "Mis Pedidos" próximamente');
-  };
+  setShowUserMenu(false);
+  setShowMobileMenu(false);
+  if (onProfileClick) {
+    onProfileClick(); // Abre el perfil y el usuario puede ir a la pestaña de pedidos
+  }
+};
 
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
