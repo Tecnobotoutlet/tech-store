@@ -1,5 +1,5 @@
 // src/services/authService.js - Con Supabase Auth Real
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../supabaseClient';
 
 
 
