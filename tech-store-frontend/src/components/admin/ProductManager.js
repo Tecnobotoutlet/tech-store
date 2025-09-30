@@ -105,6 +105,7 @@ const CompleteProductModal = React.memo(({
   newTag,
   categories,
   subcategories,
+  isSaving,
   onClose, 
   onSave, 
   onInputChange,
@@ -791,6 +792,7 @@ const CompleteProductModal = React.memo(({
           {modalMode !== 'view' && (
             <button
               onClick={onSave}
+              disabled={isSaving}  // AGREGAR ESTO
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
             >
               <Save className="w-4 h-4 mr-2" />
@@ -997,9 +999,18 @@ const ProductManager = () => {
     return Object.keys(errors).length === 0;
   }, [formData]);
 
-  const handleSaveProduct = useCallback(() => {
-    if (!validateForm()) return;
+  const handleSaveProduct = useCallback(async () => {
+  if (!validateForm()) return;
+  
+  // CRÍTICO: Prevenir múltiples ejecuciones
+  if (isSaving) {
+    console.log('Ya se está guardando, ignorando...');
+    return;
+  }
 
+  setIsSaving(true);
+  
+  try {
     const price = parseFloat(formData.price);
     const originalPrice = formData.originalPrice ? parseFloat(formData.originalPrice) : null;
     const discount = originalPrice && originalPrice > price ? 
@@ -1039,14 +1050,20 @@ const ProductManager = () => {
     };
 
     if (modalMode === 'add') {
-      addProduct(productData);
+      await addProduct(productData);
     } else if (modalMode === 'edit') {
-      updateProduct(selectedProduct.id, productData);
+      await updateProduct(selectedProduct.id, productData);
     }
 
     setShowModal(false);
-  }, [formData, modalMode, selectedProduct, validateForm, addProduct, updateProduct]);
-
+  } catch (error) {
+    console.error('Error al guardar:', error);
+    alert('Error al guardar el producto');
+  } finally {
+    setIsSaving(false);
+  }
+}, [formData, modalMode, selectedProduct, validateForm, addProduct, updateProduct, isSaving]);
+  
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     
@@ -1468,6 +1485,7 @@ const ProductManager = () => {
         newTag={newTag}
         categories={categories}
         subcategories={subcategories}
+        isSaving={isSaving}
         onClose={() => setShowModal(false)}
         onSave={handleSaveProduct}
         onInputChange={handleInputChange}
