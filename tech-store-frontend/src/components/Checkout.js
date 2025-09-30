@@ -17,10 +17,6 @@ import {
   Loader
 } from 'lucide-react';
 
-const supabase = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SUPABASE_ANON_KEY
-);
 
 const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   const cartContext = useCart();
