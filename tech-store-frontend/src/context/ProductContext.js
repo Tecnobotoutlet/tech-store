@@ -37,6 +37,7 @@ export const ProductProvider = ({ children }) => {
       isActive: product.is_active !== false,
       isFeatured: product.is_featured || false,
       isNew: product.is_new || false,
+      isFromAdmin: product.is_from_admin || false,
       inStock: product.stock_quantity > 0,
       discount: product.discount || 0,
       rating: parseFloat(product.rating || 4.5),
@@ -54,8 +55,9 @@ export const ProductProvider = ({ children }) => {
 
   // Cargar productos desde Supabase
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  console.log('📥 fetchProducts LLAMADO', new Date().toISOString());
+  setLoading(true);
+  setError(null);
     try {
       const { data, error } = await supabase
         .from('products')
@@ -108,6 +110,7 @@ export const ProductProvider = ({ children }) => {
       is_active: productData.isActive !== false,
       is_featured: productData.isFeatured || false,
       is_new: productData.isNew || false,
+      is_from_admin: true,
       discount: productData.discount || 0,
       rating: parseFloat(productData.rating || 4.5),
       reviews: parseInt(productData.reviews || 0),
@@ -136,10 +139,34 @@ export const ProductProvider = ({ children }) => {
     if (error) throw error;
 
     const newProduct = normalizeProduct(data);
-    setProducts(prev => [newProduct, ...prev]);
 
-    console.log('✅ addProduct COMPLETADO', { productId: newProduct.id });
-    return newProduct;
+console.log('📊 Antes de setProducts:', {
+  productosActuales: products.length,
+  nuevoProductoId: newProduct.id
+});
+
+setProducts(prev => {
+  console.log('🔄 setProducts ejecutándose:', {
+    prevLength: prev.length,
+    nuevoProductoId: newProduct.id
+  });
+  
+  // Verificar si ya existe
+  const yaExiste = prev.find(p => p.id === newProduct.id);
+  if (yaExiste) {
+    console.warn('⚠️ PRODUCTO YA EXISTE EN EL ESTADO');
+    return prev; // No agregarlo de nuevo
+  }
+  
+  const newState = [newProduct, ...prev];
+  console.log('✨ Nuevo estado creado:', {
+    nuevoLength: newState.length
+  });
+  return newState;
+});
+
+console.log('✅ addProduct COMPLETADO', { productId: newProduct.id });
+return newProduct;
   } catch (error) {
     console.error('❌ Error adding product:', error);
     setError('Error al agregar producto');
@@ -177,6 +204,7 @@ export const ProductProvider = ({ children }) => {
         specifications: productData.specifications || [],
         features: productData.features || [],
         variants: productData.variants || [],
+        is_from_admin: true,
         updated_at: new Date().toISOString()
       };
 

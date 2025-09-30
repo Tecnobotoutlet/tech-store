@@ -16,6 +16,7 @@ import NotificationSystem from './components/NotificationSystem';
 import AdminPanel from './components/admin/AdminPanel';
 import useProductFilters from './hooks/useProductFilters';
 import PWAHelper from './components/PWAHelper';
+import UserProfile from './components/UserProfile';
 
 // Componente interno que usa el contexto
 function AppContent() {
@@ -50,6 +51,8 @@ function AppContent() {
   const handleRatingChange = productFilters?.handleRatingChange || (() => {});
   const handleSortChange = productFilters?.handleSortChange || (() => {});
   const handleStockFilterChange = productFilters?.handleStockFilterChange || (() => {});
+  
+  const [showUserProfile, setShowUserProfile] = useState(false);
 
   const featuredProducts = getFeaturedProducts();
   const newProducts = getNewProducts();
@@ -65,6 +68,14 @@ function AppContent() {
     setCurrentCategory('all');
     setSelectedProductId(null);
   };
+
+  const handleViewProfile = () => {
+  setShowUserProfile(true);
+};
+
+const handleCloseProfile = () => {
+  setShowUserProfile(false);
+};
 
   const handleViewCatalog = (category = 'all', section = 'all') => {
     setCurrentView('catalog');
@@ -431,11 +442,12 @@ function AppContent() {
           onBrandsClick={() => handleViewCatalog()}
           onSupportClick={() => alert('Soporte próximamente')}
           onHomeClick={handleViewHome}
+          onProfileClick={handleViewProfile}
         />
       )}
       
       {currentView !== 'admin' && (
-        <Cart 
+        <Cart
           isOpen={isCartOpen} 
           onClose={handleCartClose} 
           onCheckout={handleCheckout} 
@@ -444,6 +456,11 @@ function AppContent() {
       
       <AuthModal />
       <NotificationSystem />
+
+      {showUserProfile && (
+        <UserProfile onClose={handleCloseProfile} />
+      )}
+      
       
       {currentView === 'home' && renderHomeView()}
       {currentView === 'catalog' && renderCatalogView()}

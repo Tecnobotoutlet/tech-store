@@ -85,8 +85,9 @@ self.addEventListener('fetch', event => {
 
   // NUEVO: Ignorar peticiones que no sean GET en general para APIs de Supabase
   if (url.hostname.includes('supabase.co') && request.method !== 'GET') {
-    return fetch(request);
-  }
+  event.respondWith(fetch(request));
+  return;
+}
 
   // Ignorar URLs excluidas
   if (EXCLUDED_URLS.some(excludedUrl => url.pathname.startsWith(excludedUrl))) {

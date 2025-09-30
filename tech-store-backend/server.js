@@ -5,6 +5,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { neon } from '@neondatabase/serverless';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -23,9 +24,24 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS - Configuración permisiva
+// CORS - Lista blanca de dominios permitidos
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:3001'
+].filter(Boolean);
+
 app.use(cors({
-  origin: true, // Permite todos los orígenes
+  origin: function(origin, callback) {
+    // Permitir requests sin origin (como mobile apps o curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'CORS policy no permite acceso desde este origen.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -33,14 +49,26 @@ app.use(cors({
   maxAge: 86400
 }));
 
-// Rate limiting - DESHABILITADO TEMPORALMENTE
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000,
-//   max: 100,
-//   standardHeaders: true,
-//   legacyHeaders: false,
-// });
-// app.use('/api/', limiter);
+// Rate limiting para endpoints públicos
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,
+  message: 'Demasiadas peticiones desde esta IP, intenta nuevamente en 15 minutos',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting MÁS ESTRICTO para Wompi
+const wompiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 20, // máximo 20 transacciones en 15 minutos
+  message: 'Límite de transacciones excedido, intenta en unos minutos',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/products', publicLimiter);
+app.use('/api/wompi/create-transaction', wompiLimiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -59,7 +87,6 @@ app.use('/api', (req, res, next) => {
 // RUTAS DE PRODUCTOS
 // =====================
 
-// GET - Obtener todos los productos
 app.get('/api/products', async (req, res) => {
   try {
     const products = await sql`
@@ -83,7 +110,6 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// GET - Obtener producto por ID
 app.get('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -114,7 +140,6 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
-// POST - Crear nuevo producto
 app.post('/api/products', async (req, res) => {
   try {
     const {
@@ -125,7 +150,6 @@ app.post('/api/products', async (req, res) => {
       specifications, features, variants
     } = req.body;
 
-    // Validaciones básicas
     if (!name || !description || !price || !category || !brand) {
       return res.status(400).json({
         success: false,
@@ -170,7 +194,6 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// PUT - Actualizar producto
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -239,7 +262,6 @@ app.put('/api/products/:id', async (req, res) => {
   }
 });
 
-// DELETE - Eliminar producto (soft delete)
 app.delete('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -274,11 +296,331 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // =====================
+// RUTAS DE WOMPI
+// =====================
+
+// Obtener token de aceptación de Wompi
+app.get('/api/wompi/acceptance-token', async (req, res) => {
+  try {
+    const response = await fetch('https://production.wompi.co/v1/merchants/' + process.env.WOMPI_PUBLIC_KEY);
+    const data = await response.json();
+    
+    if (data.data?.presigned_acceptance) {
+      res.json({
+        success: true,
+        acceptanceToken: data.data.presigned_acceptance.acceptance_token,
+        permalink: data.data.presigned_acceptance.permalink
+      });
+    } else {
+      throw new Error('No se pudo obtener el token de aceptación');
+    }
+  } catch (error) {
+    console.error('Error getting acceptance token:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error obteniendo token de aceptación'
+    });
+  }
+});
+
+// Crear transacción en Wompi
+app.post('/api/wompi/create-transaction', async (req, res) => {
+  try {
+    const {
+      orderId,
+      amount,
+      currency = 'COP',
+      reference,
+      customerEmail,
+      paymentMethod,
+      acceptanceToken,
+      customerData,
+      shippingAddress
+    } = req.body;
+
+    // Validaciones
+    if (!orderId || !amount || !customerEmail || !paymentMethod || !acceptanceToken || !reference) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Datos incompletos',
+        message: 'Faltan campos requeridos'
+      });
+    }
+
+    // Generar firma de integridad
+    const amountInCents = Math.round(amount * 100);
+    const integrityString = `${reference}${amountInCents}${currency}${process.env.WOMPI_INTEGRITY_SECRET}`;
+    const integritySignature = crypto.createHash('sha256').update(integrityString).digest('hex');
+
+    // Preparar datos base de la transacción
+    const transactionData = {
+      amount_in_cents: amountInCents,
+      currency: currency,
+      signature: integritySignature,
+      customer_email: customerEmail,
+      reference: reference,
+      payment_method: paymentMethod,
+      acceptance_token: acceptanceToken,
+      customer_data: {
+        phone_number: customerData?.phone || '',
+        full_name: `${customerData?.firstName || ''} ${customerData?.lastName || ''}`.trim(),
+        legal_id: customerData?.document || '',
+        legal_id_type: customerData?.documentType || 'CC'
+      },
+      redirect_url: `${process.env.FRONTEND_URL}/payment-result?reference=${reference}`
+    };
+
+    // Agregar dirección de envío
+    if (shippingAddress && shippingAddress.address) {
+      transactionData.shipping_address = {
+        address_line_1: shippingAddress.address,
+        address_line_2: shippingAddress.addressDetails || '',
+        city: shippingAddress.city,
+        region: shippingAddress.state || shippingAddress.city,
+        country: 'CO',
+        phone_number: shippingAddress.phone || customerData?.phone || '',
+        postal_code: shippingAddress.postalCode || ''
+      };
+    }
+
+    console.log('🔐 Creating Wompi transaction:', {
+      reference,
+      amount: amountInCents,
+      method: paymentMethod.type,
+      email: customerEmail
+    });
+
+    // Crear transacción en Wompi
+    const wompiResponse = await fetch(`${process.env.WOMPI_API_URL}/transactions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.WOMPI_PRIVATE_KEY}`
+      },
+      body: JSON.stringify(transactionData)
+    });
+
+    const wompiData = await wompiResponse.json();
+
+    if (!wompiResponse.ok) {
+      console.error('❌ Wompi API error:', wompiData);
+      throw new Error(
+        wompiData.error?.reason || 
+        wompiData.error?.messages?.join(', ') || 
+        'Error creando transacción en Wompi'
+      );
+    }
+
+    console.log('✅ Wompi transaction created:', wompiData.data.id);
+
+    // Guardar en base de datos usando Neon
+    try {
+      await sql`
+        INSERT INTO transactions (
+          order_id,
+          user_id,
+          wompi_transaction_id,
+          wompi_reference,
+          amount,
+          currency,
+          status,
+          payment_method_type,
+          customer_email,
+          customer_data,
+          wompi_data,
+          created_at,
+          updated_at
+        ) VALUES (
+          ${orderId},
+          ${customerData?.userId || null},
+          ${wompiData.data.id},
+          ${reference},
+          ${amount},
+          ${currency},
+          ${wompiData.data.status},
+          ${paymentMethod.type},
+          ${customerEmail},
+          ${JSON.stringify(customerData)},
+          ${JSON.stringify(wompiData.data)},
+          NOW(),
+          NOW()
+        )
+      `;
+
+      // Actualizar estado del pedido
+      const orderStatus = wompiData.data.status === 'APPROVED' ? 'paid' : 'pending';
+      
+      await sql`
+        UPDATE orders 
+        SET 
+          payment_status = ${orderStatus},
+          updated_at = NOW()
+        WHERE id = ${orderId}
+      `;
+
+      console.log('💾 Transaction saved to database');
+    } catch (dbError) {
+      console.error('⚠️ Error guardando en DB:', dbError);
+      // No fallar la transacción si el problema es solo la DB
+    }
+
+    return res.status(200).json({
+      success: true,
+      transaction: wompiData.data,
+      reference: reference,
+      paymentUrl: wompiData.data.payment_method?.extra?.async_payment_url || null,
+      status: wompiData.data.status
+    });
+
+  } catch (error) {
+    console.error('❌ Error en create-transaction:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error procesando pago',
+      message: error.message
+    });
+  }
+});
+
+// Consultar estado de transacción
+app.get('/api/wompi/transaction-status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const response = await fetch(
+      `${process.env.WOMPI_API_URL}/transactions/${id}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.WOMPI_PRIVATE_KEY}`
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error('Error consultando estado de transacción');
+    }
+
+    res.json({
+      success: true,
+      transaction: data.data
+    });
+  } catch (error) {
+    console.error('Error getting transaction status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error consultando estado de transacción'
+    });
+  }
+});
+
+// Webhook de Wompi
+app.post('/api/wompi/webhook', async (req, res) => {
+  try {
+    const signature = req.headers['x-event-signature'];
+    const eventData = req.body;
+
+    console.log('📨 Webhook received:', {
+      event: eventData.event,
+      transactionId: eventData.data?.transaction?.id,
+      hasSignature: !!signature
+    });
+
+    // Validar firma (OBLIGATORIO en producción)
+    if (signature) {
+      const bodyString = JSON.stringify(eventData);
+      const expectedSignature = crypto
+        .createHash('sha256')
+        .update(`${bodyString}${process.env.WOMPI_EVENTS_SECRET}`)
+        .digest('hex');
+      
+      if (signature !== expectedSignature) {
+        console.error('❌ Invalid webhook signature');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+      console.log('✅ Webhook signature validated');
+    } else {
+      console.warn('⚠️ Webhook sin firma - rechazado en producción');
+      return res.status(401).json({ error: 'Missing signature' });
+    }
+
+    const { event, data } = eventData;
+    const transaction = data.transaction;
+
+    if (!transaction) {
+      return res.status(400).json({ error: 'No transaction data' });
+    }
+
+    console.log('🔄 Processing webhook:', {
+      event,
+      transactionId: transaction.id,
+      status: transaction.status,
+      reference: transaction.reference
+    });
+
+    // Actualizar transacción en DB
+    try {
+      await sql`
+        UPDATE transactions 
+        SET 
+          status = ${transaction.status},
+          wompi_data = ${JSON.stringify(transaction)},
+          webhook_data = ${JSON.stringify(eventData)},
+          updated_at = NOW()
+        WHERE wompi_transaction_id = ${transaction.id}
+      `;
+
+      // Mapear estados
+      const paymentStatus = {
+        'APPROVED': 'paid',
+        'DECLINED': 'failed',
+        'VOIDED': 'cancelled',
+        'ERROR': 'failed'
+      }[transaction.status] || 'pending';
+
+      const orderStatus = {
+        'APPROVED': 'processing',
+        'DECLINED': 'cancelled',
+        'VOIDED': 'cancelled'
+      }[transaction.status] || 'pending';
+
+      // Actualizar pedido
+      await sql`
+        UPDATE orders o
+        SET 
+          status = ${orderStatus},
+          payment_status = ${paymentStatus},
+          updated_at = NOW()
+        FROM transactions t
+        WHERE t.order_id = o.id 
+          AND t.wompi_transaction_id = ${transaction.id}
+      `;
+
+      console.log('✅ Database updated successfully');
+    } catch (dbError) {
+      console.error('❌ Error updating database:', dbError);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Webhook processed successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error processing webhook:', error);
+    return res.status(500).json({
+      error: 'Error processing webhook',
+      message: error.message
+    });
+  }
+});
+
+// =====================
 // RUTA DE SALUD
 // =====================
 app.get('/api/health', async (req, res) => {
   try {
-    // Test de conexión a la base de datos
     await sql`SELECT 1`;
     
     res.json({
@@ -286,7 +628,8 @@ app.get('/api/health', async (req, res) => {
       message: 'TechStore API funcionando correctamente',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
-      database: 'Connected'
+      database: 'Connected',
+      wompi: 'Configured'
     });
   } catch (error) {
     res.status(503).json({
@@ -324,6 +667,7 @@ app.listen(PORT, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API URL: http://localhost:${PORT}/api`);
   console.log(`💾 Database: Neon PostgreSQL`);
+  console.log(`💳 Wompi: ${process.env.WOMPI_API_URL}`);
 });
 
 export default app;

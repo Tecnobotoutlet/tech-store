@@ -1,22 +1,22 @@
-// src/components/Checkout.js - Versión corregida sin Router
+// src/components/Checkout.js - Versión actualizada con múltiples métodos
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import PaymentMethodSelector from './PaymentMethodSelector';
 import CreditCardForm from './CreditCardForm';
+import NequiForm from './NequiForm';
+import PSEForm from './PSEForm';
 import wompiService from '../services/wompiService';
 import { supabase } from '../supabaseClient';
 import { 
   ArrowLeft, 
-  CreditCard, 
   User, 
   MapPin,
   Truck,
   Shield,
   CheckCircle,
-  AlertCircle,
-  Loader
+  AlertCircle
 } from 'lucide-react';
-
 
 const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   const cartContext = useCart();
@@ -45,14 +45,12 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     neighborhood: '',
     addressDetails: '',
     paymentMethod: 'card',
-    acceptTerms: false,
-    acceptMarketing: false
+    acceptTerms: false
   });
 
   const [errors, setErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [cardData, setCardData] = useState(null);
   const [showGuestCheckoutPrompt, setShowGuestCheckoutPrompt] = useState(!isAuthenticated);
 
   useEffect(() => {
@@ -84,10 +82,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     }));
     
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: null
-      }));
+      setErrors(prev => ({ ...prev, [name]: null }));
     }
   };
 
@@ -111,7 +106,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     }
 
     if (step === 3) {
-      if (!formData.acceptTerms) newErrors.acceptTerms = 'Debes aceptar los términos y condiciones';
+      if (!formData.acceptTerms) newErrors.acceptTerms = 'Debes aceptar los términos';
     }
 
     setErrors(newErrors);
@@ -129,181 +124,239 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   };
 
   const createOrder = async () => {
-  try {
-    const orderData = {
-      
-      user_id: user?.id || null,
-      total: total,
-      subtotal: total,
-      shipping_cost: 0,
-      tax: 0,
-      discount: 0,
-      status: 'pending',
-      payment_status: 'pending',
-      payment_method: formData.paymentMethod,
-      customer_email: formData.email,
-      customer_phone: formData.phone,
-      customer_name: `${formData.firstName} ${formData.lastName}`,
-      shipping_full_name: `${formData.firstName} ${formData.lastName}`,
-      shipping_phone: formData.phone,
-      shipping_address_line1: formData.address,
-      shipping_address_line2: formData.addressDetails || null,
-      shipping_city: formData.city,
-      shipping_state: formData.department,
-      shipping_postal_code: formData.postalCode || null,
-      shipping_country: 'CO',
-      customer_notes: null,
-      admin_notes: null
-    };
+    try {
+      const orderData = {
+        user_id: user?.id || null,
+        total: total,
+        subtotal: total,
+        shipping_cost: 0,
+        tax: 0,
+        discount: 0,
+        status: 'pending',
+        payment_status: 'pending',
+        payment_method: formData.paymentMethod,
+        customer_email: formData.email,
+        customer_phone: formData.phone,
+        customer_name: `${formData.firstName} ${formData.lastName}`,
+        shipping_full_name: `${formData.firstName} ${formData.lastName}`,
+        shipping_phone: formData.phone,
+        shipping_address_line1: formData.address,
+        shipping_address_line2: formData.addressDetails || null,
+        shipping_city: formData.city,
+        shipping_state: formData.department,
+        shipping_postal_code: formData.postalCode || null,
+        shipping_country: 'CO'
+      };
 
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([orderData])
-      .select()
-      .single();
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
 
-    if (orderError) {
-      console.error('Error creating order:', orderError);
-      throw orderError;
+      if (orderError) throw orderError;
+
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.id,
+        product_name: item.name,
+        product_image: item.image,
+        product_sku: item.sku || null,
+        quantity: item.quantity,
+        unit_price: item.price,
+        discount: 0,
+        subtotal: item.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      return order;
+
+    } catch (error) {
+      console.error('Error creando orden:', error);
+      throw error;
     }
+  };
 
-    console.log('Order created:', order.id);
+  const getCustomerData = () => ({
+    userId: user?.id || null,
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    email: formData.email,
+    phone: formData.phone,
+    document: formData.document,
+    documentType: formData.documentType
+  });
 
-    const orderItems = items.map(item => ({
-  order_id: order.id,
-  product_id: item.id,
-  product_name: item.name,
-  product_image: item.image,
-  product_sku: item.sku || null,
-  quantity: item.quantity,
-  unit_price: item.price,
-  discount: 0,
-  subtotal: item.price * item.quantity
-}));
+  const getShippingAddress = () => ({
+    address: formData.address,
+    addressDetails: formData.addressDetails,
+    city: formData.city,
+    state: formData.department,
+    postalCode: formData.postalCode,
+    phone: formData.phone
+  });
 
-const { error: itemsError } = await supabase
-  .from('order_items')
-  .insert(orderItems);
+  const handlePaymentSuccess = (result) => {
+    if (result.paymentUrl) {
+      // Redirigir a URL de pago (Nequi, PSE, etc.)
+      window.location.href = result.paymentUrl;
+    } else {
+      clearCart();
+      
+      if (onPaymentSuccess) {
+        onPaymentSuccess({
+          reference: result.reference,
+          transactionId: result.transactionId,
+          amount: total,
+          orderId: result.orderId,
+          items: items,
+          customerData: formData
+        });
+      }
+    }
+  };
 
-if (itemsError) {
-  console.error('Error creating order items:', itemsError);
-  throw itemsError;
-}
+  const handlePaymentError = (error) => {
+    console.error('Error en pago:', error);
+    setErrors({ payment: error.error || error.message || 'Error procesando el pago' });
+    
+    if (onPaymentError) {
+      onPaymentError({
+        error: error.error || error.message,
+        reference: error.reference
+      });
+    }
+  };
 
-return order;
-
-  } catch (error) {
-    console.error('Error in createOrder:', error);
-    throw error;
-  }
-};
-  const handleCardTokenize = async (tokenizedCardData) => {
+  // HANDLER: Tarjeta
+  const handleCardPayment = async (cardData) => {
     if (!validateStep(3)) return;
 
     setIsProcessing(true);
-    setCardData(tokenizedCardData);
 
     try {
-      console.log('Creating order...');
       const order = await createOrder();
 
-      const paymentData = {
+      const result = await wompiService.processCardPayment({
         orderId: order.id,
         amount: total,
         currency: 'COP',
-        cardData: tokenizedCardData,
-        customerData: {
-          userId: user?.id || null,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          document: formData.document,
-          documentType: formData.documentType
-        },
-        shippingAddress: {
-          address: formData.address,
-          addressDetails: formData.addressDetails,
-          city: formData.city,
-          state: formData.department,
-          postalCode: formData.postalCode,
-          phone: formData.phone
-        },
+        cardData: cardData,
+        customerData: getCustomerData(),
+        shippingAddress: getShippingAddress(),
         installments: 1
-      };
-
-      console.log('Processing payment...');
-
-      const testCards = ['4242424242424242', '5555555555554444', '4000000000000002', '4000000000009995'];
-      const cleanCardNumber = tokenizedCardData.number.replace(/\s/g, '');
-      const isTestCard = testCards.includes(cleanCardNumber);
-
-      let result;
-      if (isTestCard) {
-        console.log('Using test card flow...');
-        result = await wompiService.processTestPayment(paymentData);
-      } else {
-        console.log('Using real payment flow...');
-        result = await wompiService.processCardPayment(paymentData);
-      }
-
-      console.log('Payment result:', result);
+      });
 
       if (result.success) {
-        if (result.status === 'APPROVED') {
-          clearCart();
-          
-          await supabase
-            .from('orders')
-            .update({
-              status: 'processing',
-              payment_status: 'paid',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', order.id);
+        await supabase
+          .from('orders')
+          .update({
+            status: result.status === 'APPROVED' ? 'processing' : 'pending',
+            payment_status: result.status === 'APPROVED' ? 'paid' : 'pending'
+          })
+          .eq('id', order.id);
 
-          if (onPaymentSuccess) {
-            onPaymentSuccess({
-              reference: result.reference,
-              transactionId: result.transactionId,
-              amount: total,
-              orderId: order.id,
-              items: items,
-              customerData: formData
-            });
-          }
-        } else if (result.status === 'PENDING') {
-          if (onPaymentSuccess) {
-            onPaymentSuccess({
-              reference: result.reference,
-              transactionId: result.transactionId,
-              amount: total,
-              orderId: order.id,
-              status: 'pending',
-              items: items,
-              customerData: formData
-            });
-          }
-        } else if (result.paymentUrl) {
-          window.location.href = result.paymentUrl;
-        }
+        handlePaymentSuccess({ ...result, orderId: order.id });
       } else {
         throw new Error(result.error || 'Pago rechazado');
       }
 
     } catch (error) {
-      console.error('Error processing payment:', error);
-      
-      const errorData = {
-        error: error.message || 'Error procesando el pago',
-        reference: wompiService.generateReference ? wompiService.generateReference() : Date.now().toString()
-      };
+      handlePaymentError(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-      if (onPaymentError) {
-        onPaymentError(errorData);
+  // HANDLER: Nequi
+  const handleNequiPayment = async (phoneNumber) => {
+    if (!validateStep(3)) return;
+
+    setIsProcessing(true);
+
+    try {
+      const order = await createOrder();
+
+      const result = await wompiService.processNequiPayment({
+        orderId: order.id,
+        amount: total,
+        phoneNumber: phoneNumber,
+        customerData: getCustomerData(),
+        shippingAddress: getShippingAddress()
+      });
+
+      if (result.success) {
+        handlePaymentSuccess({ ...result, orderId: order.id });
       } else {
-        setErrors({ payment: error.message });
+        throw new Error(result.error || 'Error procesando Nequi');
       }
+
+    } catch (error) {
+      handlePaymentError(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // HANDLER: PSE
+  const handlePSEPayment = async (pseData) => {
+    if (!validateStep(3)) return;
+
+    setIsProcessing(true);
+
+    try {
+      const order = await createOrder();
+
+      const result = await wompiService.processPSEPayment({
+        orderId: order.id,
+        amount: total,
+        customerData: getCustomerData(),
+        pseData: pseData,
+        shippingAddress: getShippingAddress()
+      });
+
+      if (result.success) {
+        handlePaymentSuccess({ ...result, orderId: order.id });
+      } else {
+        throw new Error(result.error || 'Error procesando PSE');
+      }
+
+    } catch (error) {
+      handlePaymentError(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // HANDLER: Bancolombia
+  const handleBancolombiaPayment = async () => {
+    if (!validateStep(3)) return;
+
+    setIsProcessing(true);
+
+    try {
+      const order = await createOrder();
+
+      const result = await wompiService.processBancolombiaPayment({
+        orderId: order.id,
+        amount: total,
+        customerData: getCustomerData(),
+        shippingAddress: getShippingAddress()
+      });
+
+      if (result.success) {
+        handlePaymentSuccess({ ...result, orderId: order.id });
+      } else {
+        throw new Error(result.error || 'Error procesando Bancolombia');
+      }
+
+    } catch (error) {
+      handlePaymentError(error);
     } finally {
       setIsProcessing(false);
     }
@@ -582,17 +635,7 @@ return order;
 
   const renderPaymentStep = () => (
     <div className="space-y-6">
-      <div className="flex items-center space-x-3 mb-6">
-        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-          <CreditCard className="w-5 h-5 text-blue-600" />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold">Método de pago</h3>
-          <p className="text-sm text-gray-600">Finaliza tu compra de forma segura</p>
-        </div>
-      </div>
-
-      <div className="bg-gray-50 rounded-lg p-6">
+      <div className="bg-gray-50 rounded-lg p-6 mb-6">
         <h4 className="font-semibold mb-4">Resumen del pedido</h4>
         <div className="space-y-3">
           {items.map((item, index) => (
@@ -610,15 +653,45 @@ return order;
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h4 className="font-semibold mb-4">Información de pago</h4>
-        <CreditCardForm 
-          onCardTokenize={handleCardTokenize}
-          isProcessing={isProcessing}
-        />
+      {/* Selector de método de pago */}
+      <PaymentMethodSelector 
+        selectedMethod={formData.paymentMethod}
+        onMethodChange={(method) => setFormData(prev => ({ ...prev, paymentMethod: method }))}
+      />
+
+      {/* Formulario según método seleccionado */}
+      <div className="mt-6">
+        {formData.paymentMethod === 'card' && (
+          <CreditCardForm 
+            onCardTokenize={handleCardPayment}
+            isProcessing={isProcessing}
+          />
+        )}
+
+        {formData.paymentMethod === 'nequi' && (
+          <NequiForm 
+            onSubmit={handleNequiPayment}
+            isProcessing={isProcessing}
+          />
+        )}
+
+        {formData.paymentMethod === 'pse' && (
+          <PSEForm 
+            onSubmit={handlePSEPayment}
+            isProcessing={isProcessing}
+            customerData={getCustomerData()}
+          />
+        )}
+
+        {formData.paymentMethod === 'bancolombia' && (
+          <div className="text-center py-8">
+            <p className="mb-4 text-gray-600">Bancolombia estará disponible próximamente</p>
+          </div>
+        )}
       </div>
 
-      <div className="space-y-3">
+      {/* Términos y condiciones */}
+      <div className="space-y-3 pt-6 border-t">
         <label className="flex items-start space-x-3">
           <input
             type="checkbox"
@@ -628,44 +701,10 @@ return order;
             className="mt-1"
           />
           <span className="text-sm text-gray-700">
-            Acepto los <button type="button" className="text-blue-600 hover:underline">términos y condiciones</button> y la <button type="button" className="text-blue-600 hover:underline">política de privacidad</button> *
+            Acepto los términos y condiciones y la política de privacidad *
           </span>
         </label>
         {errors.acceptTerms && <p className="text-red-500 text-sm">{errors.acceptTerms}</p>}
-
-        <label className="flex items-start space-x-3">
-          <input
-            type="checkbox"
-            name="acceptMarketing"
-            checked={formData.acceptMarketing}
-            onChange={handleInputChange}
-            className="mt-1"
-          />
-          <span className="text-sm text-gray-700">
-            Quiero recibir ofertas y promociones por email
-          </span>
-        </label>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h5 className="font-semibold text-blue-900 mb-2">Tarjetas de Prueba:</h5>
-        <div className="text-sm space-y-1 text-blue-800">
-          <p><strong>4242 4242 4242 4242</strong> - Pago exitoso</p>
-          <p><strong>4000 0000 0000 0002</strong> - Pago rechazado</p>
-          <p className="text-xs">CVV: cualquier 3 dígitos | Fecha: cualquier fecha futura</p>
-        </div>
-      </div>
-
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div className="flex items-center space-x-3">
-          <Shield className="w-6 h-6 text-green-600" />
-          <div>
-            <h5 className="font-medium text-green-900">Compra 100% segura</h5>
-            <p className="text-sm text-green-700">
-              Tus datos están protegidos con Wompi
-            </p>
-          </div>
-        </div>
       </div>
 
       {errors.payment && (
@@ -726,16 +765,16 @@ return order;
               {currentStep === 2 && renderShippingStep()}
               {currentStep === 3 && renderPaymentStep()}
 
-              <div className="flex justify-between pt-6 border-t">
-                <button
-                  onClick={handlePrevStep}
-                  disabled={currentStep === 1 || isProcessing}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Anterior
-                </button>
+              {currentStep < 3 && (
+                <div className="flex justify-between pt-6 border-t">
+                  <button
+                    onClick={handlePrevStep}
+                    disabled={currentStep === 1 || isProcessing}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Anterior
+                  </button>
 
-                {currentStep < 3 && (
                   <button
                     onClick={handleNextStep}
                     disabled={isProcessing}
@@ -743,8 +782,8 @@ return order;
                   >
                     Siguiente
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 

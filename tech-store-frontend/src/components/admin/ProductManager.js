@@ -1,4 +1,5 @@
 // src/components/admin/ProductManager.js - Versión Completa con Categorías y Subcategorías
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
 import { categoryService } from '../../services/categoryService';
@@ -22,6 +23,8 @@ import {
   PlusCircle,
   MinusCircle
 } from 'lucide-react';
+
+let isCreatingProduct = false;
 
 // Constantes
 const BRANDS = [
@@ -1021,8 +1024,8 @@ useEffect(() => {
   }
 
   console.log('▶️ Iniciando guardado...');
-    
   setIsSaving(true);
+  isCreatingProduct = true;
   
   try {
     const price = parseFloat(formData.price);
@@ -1075,6 +1078,7 @@ useEffect(() => {
     alert('Error al guardar el producto');
   } finally {
     setIsSaving(false);
+    isCreatingProduct = false;
   }
 }, [formData, modalMode, selectedProduct, validateForm, addProduct, updateProduct, isSaving]);
   
