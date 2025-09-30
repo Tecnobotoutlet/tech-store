@@ -17,7 +17,7 @@ import {
   ShoppingBag
 } from 'lucide-react';
 
-const AdminLayout = ({ children, currentSection, onSectionChange }) => {
+const AdminLayout = ({ children, currentSection, onSectionChange, onBackToStore }) => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
