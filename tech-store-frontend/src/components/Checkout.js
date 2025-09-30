@@ -1,6 +1,5 @@
-// src/components/Checkout.js - Integración completa con Wompi
+// src/components/Checkout.js - Versión corregida sin Router
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import CreditCardForm from './CreditCardForm';
@@ -9,11 +8,8 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   ArrowLeft, 
   CreditCard, 
-  Lock, 
   User, 
-  MapPin, 
-  Phone, 
-  Mail,
+  MapPin,
   Truck,
   Shield,
   CheckCircle,
@@ -27,45 +23,32 @@ const supabase = createClient(
 );
 
 const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
-  const navigate = useNavigate();
-  
-  // Hooks seguros con nuevo sistema de autenticación
   const cartContext = useCart();
   const authContext = useAuth();
   
-  // Manejo seguro del contexto del carrito
   const items = cartContext?.items || cartContext?.cartItems || [];
   const total = cartContext?.total || 0;
   const clearCart = cartContext?.clearCart || (() => {});
   
-  // Manejo seguro del contexto de autenticación
   const isAuthenticated = authContext?.isAuthenticated || false;
   const user = authContext?.user || null;
   const openLoginModal = authContext?.openLoginModal || (() => {});
   const openRegisterModal = authContext?.openRegisterModal || (() => {});
   
-  // Estados del formulario
   const [formData, setFormData] = useState({
-    // Datos personales
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     document: '',
     documentType: 'CC',
-    
-    // Dirección de envío
     address: '',
     city: 'Bogotá',
     department: 'Bogotá D.C.',
     postalCode: '',
     neighborhood: '',
     addressDetails: '',
-    
-    // Método de pago
     paymentMethod: 'card',
-    
-    // Términos y condiciones
     acceptTerms: false,
     acceptMarketing: false
   });
@@ -76,7 +59,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   const [cardData, setCardData] = useState(null);
   const [showGuestCheckoutPrompt, setShowGuestCheckoutPrompt] = useState(!isAuthenticated);
 
-  // Prellenar datos si el usuario está autenticado
   useEffect(() => {
     if (isAuthenticated && user) {
       setFormData(prev => ({
@@ -150,7 +132,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  // Crear pedido en Supabase
   const createOrder = async () => {
     try {
       const orderData = {
@@ -192,7 +173,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
       console.log('Order created:', order.id);
 
-      // Crear items del pedido
       const orderItems = items.map(item => ({
         order_id: order.id,
         product_id: item.id,
@@ -225,11 +205,9 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     setCardData(tokenizedCardData);
 
     try {
-      // 1. Crear pedido en Supabase primero
       console.log('Creating order...');
       const order = await createOrder();
 
-      // 2. Preparar datos para Wompi
       const paymentData = {
         orderId: order.id,
         amount: total,
@@ -257,14 +235,11 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
       console.log('Processing payment...');
 
-      // 3. Procesar pago con Wompi
-      let result;
-      
-      // Detectar si es tarjeta de prueba
       const testCards = ['4242424242424242', '5555555555554444', '4000000000000002', '4000000000009995'];
       const cleanCardNumber = tokenizedCardData.number.replace(/\s/g, '');
       const isTestCard = testCards.includes(cleanCardNumber);
 
+      let result;
       if (isTestCard) {
         console.log('Using test card flow...');
         result = await wompiService.processTestPayment(paymentData);
@@ -275,13 +250,10 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
       console.log('Payment result:', result);
 
-      // 4. Manejar resultado del pago
       if (result.success) {
         if (result.status === 'APPROVED') {
-          // Pago aprobado
           clearCart();
           
-          // Actualizar estado del pedido
           await supabase
             .from('orders')
             .update({
@@ -291,7 +263,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
             })
             .eq('id', order.id);
 
-          // Llamar callback de éxito o navegar
           if (onPaymentSuccess) {
             onPaymentSuccess({
               reference: result.reference,
@@ -301,28 +272,23 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
               items: items,
               customerData: formData
             });
-          } else {
-            navigate(`/payment-result?success=true&reference=${result.reference}&orderId=${order.id}`);
           }
         } else if (result.status === 'PENDING') {
-          // Pago pendiente
           if (onPaymentSuccess) {
             onPaymentSuccess({
               reference: result.reference,
               transactionId: result.transactionId,
               amount: total,
               orderId: order.id,
-              status: 'pending'
+              status: 'pending',
+              items: items,
+              customerData: formData
             });
-          } else {
-            navigate(`/payment-result?pending=true&reference=${result.reference}&orderId=${order.id}`);
           }
         } else if (result.paymentUrl) {
-          // Redirigir a URL de pago (Nequi, PSE)
           window.location.href = result.paymentUrl;
         }
       } else {
-        // Pago rechazado
         throw new Error(result.error || 'Pago rechazado');
       }
 
@@ -344,7 +310,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     }
   };
 
-  // Prompt de autenticación
   const AuthPrompt = () => (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6 mb-6">
       <div className="flex items-center justify-between">
@@ -628,7 +593,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
       </div>
 
-      {/* Resumen del pedido */}
       <div className="bg-gray-50 rounded-lg p-6">
         <h4 className="font-semibold mb-4">Resumen del pedido</h4>
         <div className="space-y-3">
@@ -647,7 +611,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
       </div>
 
-      {/* Formulario de tarjeta */}
       <div className="space-y-4">
         <h4 className="font-semibold mb-4">Información de pago</h4>
         <CreditCardForm 
@@ -656,7 +619,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         />
       </div>
 
-      {/* Términos y condiciones */}
       <div className="space-y-3">
         <label className="flex items-start space-x-3">
           <input
@@ -686,7 +648,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </label>
       </div>
 
-      {/* Tarjetas de prueba */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h5 className="font-semibold text-blue-900 mb-2">Tarjetas de Prueba:</h5>
         <div className="text-sm space-y-1 text-blue-800">
@@ -696,7 +657,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
       </div>
 
-      {/* Seguridad */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <div className="flex items-center space-x-3">
           <Shield className="w-6 h-6 text-green-600" />
@@ -709,7 +669,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
       </div>
 
-      {/* Errores de pago */}
       {errors.payment && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-center space-x-3">
@@ -727,7 +686,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={onBack}
@@ -740,10 +698,8 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Formulario */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-6">
-              {/* Progress Steps */}
               <div className="flex items-center justify-between mb-8">
                 {[1, 2, 3].map((step) => (
                   <div key={step} className="flex items-center">
@@ -767,12 +723,10 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
                 ))}
               </div>
 
-              {/* Step Content */}
               {currentStep === 1 && renderPersonalDataStep()}
               {currentStep === 2 && renderShippingStep()}
               {currentStep === 3 && renderPaymentStep()}
 
-              {/* Navigation Buttons */}
               <div className="flex justify-between pt-6 border-t">
                 <button
                   onClick={handlePrevStep}
@@ -795,9 +749,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Order Summary */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Tu pedido</h3>
               <div className="space-y-3">
@@ -824,7 +776,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
               </div>
             </div>
 
-            {/* Benefits */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Beneficios</h3>
               <div className="space-y-3">
