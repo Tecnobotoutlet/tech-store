@@ -1,5 +1,4 @@
 // src/components/admin/ProductManager.js - Versión Completa con Categorías y Subcategorías
-let isCreatingProduct = false;
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
