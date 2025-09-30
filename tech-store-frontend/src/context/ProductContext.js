@@ -88,56 +88,70 @@ export const ProductProvider = ({ children }) => {
 
   // Agregar producto
   const addProduct = useCallback(async (productData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const dbData = {
-        name: productData.name,
-        description: productData.description,
-        price: parseFloat(productData.price),
-        original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
-        category: productData.category,
-        category_name: productData.categoryName || productData.category,
-        brand: productData.brand,
-        model: productData.model || null,
-        stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
-        image: productData.images?.[0] || productData.image || null,
-        images: productData.images || [],
-        is_active: productData.isActive !== false,
-        is_featured: productData.isFeatured || false,
-        is_new: productData.isNew || false,
-        discount: productData.discount || 0,
-        rating: parseFloat(productData.rating || 4.5),
-        reviews: parseInt(productData.reviews || 0),
-        tags: productData.tags || [],
-        warranty: productData.warranty || '12 meses de garantía',
-        shipping: productData.shipping || 'Envío gratis en 24-48 horas',
-        specifications: productData.specifications || [],
-        features: productData.features || [],
-        variants: productData.variants || []
-      };
+  console.log('🔵 addProduct INICIADO', {
+    timestamp: new Date().toISOString(),
+    productName: productData.name,
+    stackTrace: new Error().stack
+  });
+  
+  setLoading(true);
+  setError(null);
+  try {
+    const dbData = {
+      name: productData.name,
+      description: productData.description,
+      price: parseFloat(productData.price),
+      original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
+      category: productData.category,
+      category_name: productData.categoryName || productData.category,
+      brand: productData.brand,
+      model: productData.model || null,
+      stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
+      image: productData.images?.[0] || productData.image || null,
+      images: productData.images || [],
+      is_active: productData.isActive !== false,
+      is_featured: productData.isFeatured || false,
+      is_new: productData.isNew || false,
+      discount: productData.discount || 0,
+      rating: parseFloat(productData.rating || 4.5),
+      reviews: parseInt(productData.reviews || 0),
+      tags: productData.tags || [],
+      warranty: productData.warranty || '12 meses de garantía',
+      shipping: productData.shipping || 'Envío gratis en 24-48 horas',
+      specifications: productData.specifications || [],
+      features: productData.features || [],
+      variants: productData.variants || []
+    };
 
-      const { data, error } = await supabase
-        .from('products')
-        .insert([dbData])
-        .select()
-        .single();
+    console.log('🟡 Llamando a Supabase INSERT', { productName: productData.name });
 
-      if (error) throw error;
+    const { data, error } = await supabase
+      .from('products')
+      .insert([dbData])
+      .select()
+      .single();
 
-      const newProduct = normalizeProduct(data);
-      setProducts(prev => [newProduct, ...prev]);
+    console.log('🟢 Supabase INSERT completado', { 
+      success: !error, 
+      productId: data?.id,
+      productName: data?.name 
+    });
 
-      return newProduct;
-    } catch (error) {
-      console.error('Error adding product:', error);
-      setError('Error al agregar producto');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [normalizeProduct]);
+    if (error) throw error;
 
+    const newProduct = normalizeProduct(data);
+    setProducts(prev => [newProduct, ...prev]);
+
+    console.log('✅ addProduct COMPLETADO', { productId: newProduct.id });
+    return newProduct;
+  } catch (error) {
+    console.error('❌ Error adding product:', error);
+    setError('Error al agregar producto');
+    throw error;
+  } finally {
+    setLoading(false);
+  }
+}, [normalizeProduct]);
   // Actualizar producto
   const updateProduct = useCallback(async (productId, productData) => {
     setLoading(true);
