@@ -1,6 +1,6 @@
 // src/components/PaymentResult.js - Actualizado con integración Wompi
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import wompiService from '../services/wompiService';
 import { 
   CheckCircle, 
@@ -23,8 +23,7 @@ const PaymentResult = ({
   onViewOrder, 
   type: propType
 }) => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+ 
   
   // Estados
   const [status, setStatus] = useState(propType || 'loading');
@@ -105,19 +104,13 @@ const PaymentResult = ({
   const handleBackToHome = () => {
     if (onBackToHome) {
       onBackToHome();
-    } else {
-      navigate('/');
-    }
+    } 
   };
 
   const handleViewOrder = () => {
     if (onViewOrder) {
       onViewOrder();
-    } else if (orderId) {
-      navigate(`/orders/${orderId}`);
-    } else {
-      navigate('/orders');
-    }
+    } 
   };
 
   const getStatusConfig = () => {
