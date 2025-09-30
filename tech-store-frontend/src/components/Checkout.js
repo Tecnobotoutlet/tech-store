@@ -174,23 +174,27 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     console.log('Order created:', order.id);
 
     const orderItems = items.map(item => ({
-      order_id: order.id,
-      product_id: item.id,
-      quantity: item.quantity,
-      price: item.price,
-      subtotal: item.price * item.quantity
-    }));
+  order_id: order.id,
+  product_id: item.id,
+  product_name: item.name,
+  product_image: item.image,
+  product_sku: item.sku || null,
+  quantity: item.quantity,
+  unit_price: item.price,
+  discount: 0,
+  subtotal: item.price * item.quantity
+}));
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
+const { error: itemsError } = await supabase
+  .from('order_items')
+  .insert(orderItems);
 
-    if (itemsError) {
-      console.error('Error creating order items:', itemsError);
-      throw itemsError;
-    }
+if (itemsError) {
+  console.error('Error creating order items:', itemsError);
+  throw itemsError;
+}
 
-    return order;
+return order;
 
   } catch (error) {
     console.error('Error in createOrder:', error);
