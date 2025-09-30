@@ -54,8 +54,9 @@ export const ProductProvider = ({ children }) => {
 
   // Cargar productos desde Supabase
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  console.log('📥 fetchProducts LLAMADO', new Date().toISOString());
+  setLoading(true);
+  setError(null);
     try {
       const { data, error } = await supabase
         .from('products')
