@@ -822,6 +822,7 @@ const ProductManager = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [formErrors, setFormErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // Estados para categorías
   const [categories, setCategories] = useState({});
