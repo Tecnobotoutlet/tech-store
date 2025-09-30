@@ -1,13 +1,10 @@
 // src/context/ProductContext.js - Solo Supabase
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '../supabaseClient';
 import { createClient } from '@supabase/supabase-js';
 
 const ProductContext = createContext();
 
-// Configuración de Supabase
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const useProducts = () => {
   const context = useContext(ProductContext);
