@@ -135,6 +135,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   const createOrder = async () => {
   try {
     const orderData = {
+      
       user_id: user?.id || null,
       total: total,
       subtotal: total,
