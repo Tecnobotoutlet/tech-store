@@ -447,7 +447,7 @@ const handleCloseProfile = () => {
       )}
       
       {currentView !== 'admin' && (
-        <Cart 
+        <Cart
           isOpen={isCartOpen} 
           onClose={handleCartClose} 
           onCheckout={handleCheckout} 
