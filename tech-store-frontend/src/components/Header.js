@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
 const Header = ({ 
-  onCartClick, 
+  onCartClick,
   onSearch, 
   searchQuery, 
   onAdminClick,
