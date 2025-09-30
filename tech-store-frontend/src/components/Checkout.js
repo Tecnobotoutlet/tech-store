@@ -1,10 +1,11 @@
-// src/components/Checkout.js
+// src/components/Checkout.js - Integración completa con Wompi
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import CreditCardForm from './CreditCardForm';
-// Corregido: importación del servicio wompi
 import wompiService from '../services/wompiService';
+import { createClient } from '@supabase/supabase-js';
 import { 
   ArrowLeft, 
   CreditCard, 
@@ -20,7 +21,14 @@ import {
   Loader
 } from 'lucide-react';
 
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
+
 const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
+  const navigate = useNavigate();
+  
   // Hooks seguros con nuevo sistema de autenticación
   const cartContext = useCart();
   const authContext = useAuth();
@@ -30,7 +38,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   const total = cartContext?.total || 0;
   const clearCart = cartContext?.clearCart || (() => {});
   
-  // Manejo seguro del contexto de autenticación - usando el nuevo sistema
+  // Manejo seguro del contexto de autenticación
   const isAuthenticated = authContext?.isAuthenticated || false;
   const user = authContext?.user || null;
   const openLoginModal = authContext?.openLoginModal || (() => {});
@@ -64,10 +72,8 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
   const [errors, setErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1); // 1: datos, 2: envío, 3: pago
+  const [currentStep, setCurrentStep] = useState(1);
   const [cardData, setCardData] = useState(null);
-  
-  // Estados para autenticación
   const [showGuestCheckoutPrompt, setShowGuestCheckoutPrompt] = useState(!isAuthenticated);
 
   // Prellenar datos si el usuario está autenticado
@@ -99,7 +105,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
     
-    // Limpiar error del campo cuando el usuario empiece a escribir
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -112,7 +117,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     const newErrors = {};
 
     if (step === 1) {
-      // Validar datos personales
       if (!formData.firstName.trim()) newErrors.firstName = 'El nombre es requerido';
       if (!formData.lastName.trim()) newErrors.lastName = 'El apellido es requerido';
       if (!formData.email.trim()) newErrors.email = 'El email es requerido';
@@ -122,7 +126,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     }
 
     if (step === 2) {
-      // Validar dirección
       if (!formData.address.trim()) newErrors.address = 'La dirección es requerida';
       if (!formData.city.trim()) newErrors.city = 'La ciudad es requerida';
       if (!formData.department.trim()) newErrors.department = 'El departamento es requerido';
@@ -130,7 +133,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     }
 
     if (step === 3) {
-      // Validar términos
       if (!formData.acceptTerms) newErrors.acceptTerms = 'Debes aceptar los términos y condiciones';
     }
 
@@ -148,68 +150,201 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleCardTokenize = async (cardTokenData) => {
+  // Crear pedido en Supabase
+  const createOrder = async () => {
+    try {
+      const orderData = {
+        user_id: user?.id || null,
+        total: total,
+        subtotal: total,
+        shipping_cost: 0,
+        tax: 0,
+        status: 'pending',
+        payment_status: 'pending',
+        payment_method: formData.paymentMethod,
+        shipping_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          addressDetails: formData.addressDetails,
+          city: formData.city,
+          department: formData.department,
+          postalCode: formData.postalCode,
+          neighborhood: formData.neighborhood,
+          phone: formData.phone
+        },
+        customer_email: formData.email,
+        customer_phone: formData.phone,
+        customer_name: `${formData.firstName} ${formData.lastName}`,
+        notes: ''
+      };
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error('Error creating order:', orderError);
+        throw orderError;
+      }
+
+      console.log('Order created:', order.id);
+
+      // Crear items del pedido
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Error creating order items:', itemsError);
+        throw itemsError;
+      }
+
+      return order;
+
+    } catch (error) {
+      console.error('Error in createOrder:', error);
+      throw error;
+    }
+  };
+
+  const handleCardTokenize = async (tokenizedCardData) => {
     if (!validateStep(3)) return;
 
     setIsProcessing(true);
-    setCardData(cardTokenData);
+    setCardData(tokenizedCardData);
 
     try {
-      // Preparar datos para Wompi
+      // 1. Crear pedido en Supabase primero
+      console.log('Creating order...');
+      const order = await createOrder();
+
+      // 2. Preparar datos para Wompi
       const paymentData = {
-        cardData: cardTokenData,
+        orderId: order.id,
         amount: total,
         currency: 'COP',
-        customerData: formData,
-        shippingAddress: formData,
-        items: items
+        cardData: tokenizedCardData,
+        customerData: {
+          userId: user?.id || null,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          document: formData.document,
+          documentType: formData.documentType
+        },
+        shippingAddress: {
+          address: formData.address,
+          addressDetails: formData.addressDetails,
+          city: formData.city,
+          state: formData.department,
+          postalCode: formData.postalCode,
+          phone: formData.phone
+        },
+        installments: 1
       };
 
-      console.log('Processing payment with data:', paymentData);
+      console.log('Processing payment...');
 
-      // Procesar pago con Wompi
+      // 3. Procesar pago con Wompi
       let result;
-      if (process.env.NODE_ENV === 'development') {
-        // En desarrollo, usar tarjetas de prueba
+      
+      // Detectar si es tarjeta de prueba
+      const testCards = ['4242424242424242', '5555555555554444', '4000000000000002', '4000000000009995'];
+      const cleanCardNumber = tokenizedCardData.number.replace(/\s/g, '');
+      const isTestCard = testCards.includes(cleanCardNumber);
+
+      if (isTestCard) {
+        console.log('Using test card flow...');
         result = await wompiService.processTestPayment(paymentData);
       } else {
-        // En producción, usar proceso real
-        result = await wompiService.processPayment(paymentData);
+        console.log('Using real payment flow...');
+        result = await wompiService.processCardPayment(paymentData);
       }
 
       console.log('Payment result:', result);
 
-      if (result.success && result.status === 'APPROVED') {
-        // Limpiar carrito y redirigir al éxito
-        clearCart();
-        onPaymentSuccess({
-          reference: result.reference,
-          transactionId: result.transactionId,
-          amount: total,
-          items: items,
-          customerData: formData
-        });
+      // 4. Manejar resultado del pago
+      if (result.success) {
+        if (result.status === 'APPROVED') {
+          // Pago aprobado
+          clearCart();
+          
+          // Actualizar estado del pedido
+          await supabase
+            .from('orders')
+            .update({
+              status: 'processing',
+              payment_status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', order.id);
+
+          // Llamar callback de éxito o navegar
+          if (onPaymentSuccess) {
+            onPaymentSuccess({
+              reference: result.reference,
+              transactionId: result.transactionId,
+              amount: total,
+              orderId: order.id,
+              items: items,
+              customerData: formData
+            });
+          } else {
+            navigate(`/payment-result?success=true&reference=${result.reference}&orderId=${order.id}`);
+          }
+        } else if (result.status === 'PENDING') {
+          // Pago pendiente
+          if (onPaymentSuccess) {
+            onPaymentSuccess({
+              reference: result.reference,
+              transactionId: result.transactionId,
+              amount: total,
+              orderId: order.id,
+              status: 'pending'
+            });
+          } else {
+            navigate(`/payment-result?pending=true&reference=${result.reference}&orderId=${order.id}`);
+          }
+        } else if (result.paymentUrl) {
+          // Redirigir a URL de pago (Nequi, PSE)
+          window.location.href = result.paymentUrl;
+        }
       } else {
-        // Manejar error de pago
-        onPaymentError({
-          error: result.error || 'Pago rechazado',
-          reference: result.reference,
-          status: result.status
-        });
+        // Pago rechazado
+        throw new Error(result.error || 'Pago rechazado');
       }
 
     } catch (error) {
       console.error('Error processing payment:', error);
-      onPaymentError({
+      
+      const errorData = {
         error: error.message || 'Error procesando el pago',
         reference: wompiService.generateReference ? wompiService.generateReference() : Date.now().toString()
-      });
+      };
+
+      if (onPaymentError) {
+        onPaymentError(errorData);
+      } else {
+        setErrors({ payment: error.message });
+      }
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Prompt de autenticación para usuarios no autenticados
+  // Prompt de autenticación
   const AuthPrompt = () => (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6 mb-6">
       <div className="flex items-center justify-between">
@@ -220,26 +355,26 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900">¿Tienes cuenta?</h3>
             <p className="text-gray-600 text-sm">
-              Inicia sesión para una experiencia más rápida y acceso a tu historial de pedidos
+              Inicia sesión para una experiencia más rápida
             </p>
           </div>
         </div>
         <div className="flex space-x-3">
           <button
             onClick={openLoginModal}
-            className="text-blue-600 hover:text-blue-800 font-medium text-sm border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+            className="text-blue-600 hover:text-blue-800 font-medium text-sm border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50"
           >
             Iniciar Sesión
           </button>
           <button
             onClick={openRegisterModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700"
           >
             Registrarse
           </button>
           <button
             onClick={() => setShowGuestCheckoutPrompt(false)}
-            className="text-gray-600 hover:text-gray-800 font-medium text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+            className="text-gray-600 hover:text-gray-800 font-medium text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50"
           >
             Continuar como Invitado
           </button>
@@ -250,10 +385,8 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
   const renderPersonalDataStep = () => (
     <div className="space-y-6">
-      {/* Prompt de autenticación para usuarios no autenticados */}
       {!isAuthenticated && showGuestCheckoutPrompt && <AuthPrompt />}
       
-      {/* Mostrar información del usuario autenticado */}
       {isAuthenticated && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
           <div className="flex items-center">
@@ -277,56 +410,46 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Nombres *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Nombres *</label>
           <input
             type="text"
             name="firstName"
             value={formData.firstName}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
               errors.firstName ? 'border-red-500' : 'border-gray-300'
             } ${isAuthenticated ? 'bg-gray-50' : ''}`}
             placeholder="Tu nombre"
             readOnly={isAuthenticated}
           />
-          {errors.firstName && (
-            <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
-          )}
+          {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Apellidos *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Apellidos *</label>
           <input
             type="text"
             name="lastName"
             value={formData.lastName}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
               errors.lastName ? 'border-red-500' : 'border-gray-300'
             } ${isAuthenticated ? 'bg-gray-50' : ''}`}
             placeholder="Tu apellido"
             readOnly={isAuthenticated}
           />
-          {errors.lastName && (
-            <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
-          )}
+          {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tipo de documento
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de documento</label>
           <select
             name="documentType"
             value={formData.documentType}
             onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
             <option value="CC">Cédula de Ciudadanía</option>
             <option value="CE">Cédula de Extranjería</option>
@@ -336,63 +459,51 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Número de documento *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Número de documento *</label>
           <input
             type="text"
             name="document"
             value={formData.document}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
               errors.document ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="123456789"
           />
-          {errors.document && (
-            <p className="text-red-500 text-sm mt-1">{errors.document}</p>
-          )}
+          {errors.document && <p className="text-red-500 text-sm mt-1">{errors.document}</p>}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
               errors.email ? 'border-red-500' : 'border-gray-300'
             } ${isAuthenticated ? 'bg-gray-50' : ''}`}
             placeholder="tu@email.com"
             readOnly={isAuthenticated}
           />
-          {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-          )}
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Teléfono *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono *</label>
           <input
             type="tel"
             name="phone"
             value={formData.phone}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
               errors.phone ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="300 123 4567"
           />
-          {errors.phone && (
-            <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-          )}
+          {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
         </div>
       </div>
     </div>
@@ -411,34 +522,28 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Dirección completa *
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Dirección completa *</label>
         <input
           type="text"
           name="address"
           value={formData.address}
           onChange={handleInputChange}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
             errors.address ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="Calle 123 # 45-67"
         />
-        {errors.address && (
-          <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-        )}
+        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Ciudad *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Ciudad *</label>
           <select
             name="city"
             value={formData.city}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
               errors.city ? 'border-red-500' : 'border-gray-300'
             }`}
           >
@@ -451,73 +556,59 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
             <option value="Pereira">Pereira</option>
             <option value="Manizales">Manizales</option>
           </select>
-          {errors.city && (
-            <p className="text-red-500 text-sm mt-1">{errors.city}</p>
-          )}
+          {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Departamento *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Departamento *</label>
           <input
             type="text"
             name="department"
             value={formData.department}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
               errors.department ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="Bogotá D.C."
           />
-          {errors.department && (
-            <p className="text-red-500 text-sm mt-1">{errors.department}</p>
-          )}
+          {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Código postal
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Código postal</label>
           <input
             type="text"
             name="postalCode"
             value={formData.postalCode}
             onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             placeholder="110111"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Barrio *
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Barrio *</label>
         <input
           type="text"
           name="neighborhood"
           value={formData.neighborhood}
           onChange={handleInputChange}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
             errors.neighborhood ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="Chapinero"
         />
-        {errors.neighborhood && (
-          <p className="text-red-500 text-sm mt-1">{errors.neighborhood}</p>
-        )}
+        {errors.neighborhood && <p className="text-red-500 text-sm mt-1">{errors.neighborhood}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Detalles adicionales
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Detalles adicionales</label>
         <textarea
           name="addressDetails"
           value={formData.addressDetails}
           onChange={handleInputChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           rows={3}
           placeholder="Apartamento, casa, oficina, referencias..."
         />
@@ -556,11 +647,9 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
       </div>
 
-      {/* Método de pago */}
+      {/* Formulario de tarjeta */}
       <div className="space-y-4">
         <h4 className="font-semibold mb-4">Información de pago</h4>
-        
-        {/* Formulario de tarjeta */}
         <CreditCardForm 
           onCardTokenize={handleCardTokenize}
           isProcessing={isProcessing}
@@ -581,9 +670,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
             Acepto los <button type="button" className="text-blue-600 hover:underline">términos y condiciones</button> y la <button type="button" className="text-blue-600 hover:underline">política de privacidad</button> *
           </span>
         </label>
-        {errors.acceptTerms && (
-          <p className="text-red-500 text-sm">{errors.acceptTerms}</p>
-        )}
+        {errors.acceptTerms && <p className="text-red-500 text-sm">{errors.acceptTerms}</p>}
 
         <label className="flex items-start space-x-3">
           <input
@@ -599,18 +686,41 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </label>
       </div>
 
-      {/* Seguridad */}
+      {/* Tarjetas de prueba */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h5 className="font-semibold text-blue-900 mb-2">Tarjetas de Prueba:</h5>
+        <div className="text-sm space-y-1 text-blue-800">
+          <p><strong>4242 4242 4242 4242</strong> - Pago exitoso</p>
+          <p><strong>4000 0000 0000 0002</strong> - Pago rechazado</p>
+          <p className="text-xs">CVV: cualquier 3 dígitos | Fecha: cualquier fecha futura</p>
+        </div>
+      </div>
+
+      {/* Seguridad */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <div className="flex items-center space-x-3">
-          <Shield className="w-6 h-6 text-blue-600" />
+          <Shield className="w-6 h-6 text-green-600" />
           <div>
-            <h5 className="font-medium text-blue-900">Compra 100% segura</h5>
-            <p className="text-sm text-blue-700">
-              Tus datos están protegidos con encriptación SSL de 256 bits
+            <h5 className="font-medium text-green-900">Compra 100% segura</h5>
+            <p className="text-sm text-green-700">
+              Tus datos están protegidos con Wompi
             </p>
           </div>
         </div>
       </div>
+
+      {/* Errores de pago */}
+      {errors.payment && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center space-x-3">
+            <AlertCircle className="w-6 h-6 text-red-600" />
+            <div>
+              <h5 className="font-medium text-red-900">Error en el pago</h5>
+              <p className="text-sm text-red-700">{errors.payment}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
