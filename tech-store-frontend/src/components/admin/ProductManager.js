@@ -806,6 +806,12 @@ const CompleteProductModal = React.memo(({
 });
 
 const ProductManager = () => {
+
+useEffect(() => {
+    console.log('🔷 ProductManager MONTADO', new Date().toISOString());
+    return () => console.log('🔶 ProductManager DESMONTADO', new Date().toISOString());
+  }, []);
+  
   const { 
     products: allProducts, 
     addProduct, 
@@ -1000,6 +1006,12 @@ const ProductManager = () => {
   }, [formData]);
 
   const handleSaveProduct = useCallback(async () => {
+  console.log('🔴 handleSaveProduct LLAMADO', {
+    isSaving,
+    modalMode,
+    timestamp: new Date().toISOString()
+  });
+    
   if (!validateForm()) return;
   
   // CRÍTICO: Prevenir múltiples ejecuciones
@@ -1008,6 +1020,8 @@ const ProductManager = () => {
     return;
   }
 
+  console.log('▶️ Iniciando guardado...');
+    
   setIsSaving(true);
   
   try {
