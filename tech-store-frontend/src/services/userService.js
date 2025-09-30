@@ -1,10 +1,290 @@
 // src/services/userService.js
 import { supabase } from '../supabaseClient';
 
-
-
 export const userService = {
-  // Obtener todos los usuarios con estadísticas
+  // ==================== PERFIL DE USUARIO ====================
+  
+  async getUserProfile(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  },
+
+  async updateUserProfile(userId, profileData) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({
+          first_name: profileData.firstName,
+          last_name: profileData.lastName,
+          phone: profileData.phone,
+          date_of_birth: profileData.dateOfBirth,
+          document_type: profileData.documentType,
+          document_number: profileData.documentNumber,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  },
+
+  // ==================== DIRECCIONES ====================
+
+  async getUserAddresses(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', userId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      throw error;
+    }
+  },
+
+  async createAddress(userId, addressData) {
+    try {
+      // Si es la dirección predeterminada, quitar default de las demás
+      if (addressData.is_default) {
+        await supabase
+          .from('addresses')
+          .update({ is_default: false })
+          .eq('user_id', userId);
+      }
+
+      const { data, error } = await supabase
+        .from('addresses')
+        .insert([{
+          user_id: userId,
+          address_type: addressData.address_type || 'both',
+          full_name: addressData.full_name,
+          phone: addressData.phone,
+          address_line1: addressData.address_line1,
+          address_line2: addressData.address_line2,
+          city: addressData.city,
+          state: addressData.state,
+          postal_code: addressData.postal_code,
+          country: addressData.country || 'Colombia',
+          additional_info: addressData.additional_info,
+          is_default: addressData.is_default || false
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating address:', error);
+      throw error;
+    }
+  },
+
+  async updateAddress(addressId, userId, addressData) {
+    try {
+      // Si es la dirección predeterminada, quitar default de las demás
+      if (addressData.is_default) {
+        await supabase
+          .from('addresses')
+          .update({ is_default: false })
+          .eq('user_id', userId);
+      }
+
+      const { data, error } = await supabase
+        .from('addresses')
+        .update({
+          address_type: addressData.address_type,
+          full_name: addressData.full_name,
+          phone: addressData.phone,
+          address_line1: addressData.address_line1,
+          address_line2: addressData.address_line2,
+          city: addressData.city,
+          state: addressData.state,
+          postal_code: addressData.postal_code,
+          country: addressData.country,
+          additional_info: addressData.additional_info,
+          is_default: addressData.is_default,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', addressId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating address:', error);
+      throw error;
+    }
+  },
+
+  async deleteAddress(addressId, userId) {
+    try {
+      const { error } = await supabase
+        .from('addresses')
+        .delete()
+        .eq('id', addressId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting address:', error);
+      throw error;
+    }
+  },
+
+  async setDefaultAddress(addressId, userId) {
+    try {
+      // Quitar default de todas
+      await supabase
+        .from('addresses')
+        .update({ is_default: false })
+        .eq('user_id', userId);
+
+      // Establecer nueva default
+      const { data, error } = await supabase
+        .from('addresses')
+        .update({ is_default: true })
+        .eq('id', addressId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error setting default address:', error);
+      throw error;
+    }
+  },
+
+  // ==================== PEDIDOS ====================
+
+  async getUserOrders(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            id,
+            product_id,
+            quantity,
+            price,
+            subtotal
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  },
+
+  async getOrderDetails(orderId, userId) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            id,
+            product_id,
+            quantity,
+            price,
+            subtotal
+          )
+        `)
+        .eq('id', orderId)
+        .eq('user_id', userId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      throw error;
+    }
+  },
+
+  // ==================== ESTADÍSTICAS ====================
+
+  async getUserStats(userId) {
+    try {
+      // Obtener pedidos
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('total, status, payment_status, created_at')
+        .eq('user_id', userId);
+
+      // Calcular estadísticas
+      const totalOrders = orders?.length || 0;
+      const completedOrders = orders?.filter(o => o.status === 'delivered').length || 0;
+      const totalSpent = orders
+        ?.filter(o => o.payment_status === 'paid')
+        ?.reduce((sum, o) => sum + parseFloat(o.total), 0) || 0;
+
+      // Obtener perfil
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('created_at')
+        .eq('id', userId)
+        .single();
+
+      const memberSince = profile?.created_at 
+        ? new Date(profile.created_at).toLocaleDateString('es-CO', { 
+            year: 'numeric', 
+            month: 'long' 
+          })
+        : 'Reciente';
+
+      const lastOrder = orders?.[0];
+      const lastOrderDate = lastOrder?.created_at
+        ? new Date(lastOrder.created_at).toLocaleDateString('es-CO')
+        : 'Sin pedidos';
+
+      return {
+        totalOrders,
+        completedOrders,
+        totalSpent,
+        memberSince,
+        lastOrderDate,
+        favoriteCategory: 'Tecnología' // Puedes calcular esto desde order_items
+      };
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      throw error;
+    }
+  },
+
+  // ==================== ADMIN: GESTIÓN DE USUARIOS ====================
+
   async getAllUsers() {
     try {
       const { data: users, error } = await supabase
@@ -17,7 +297,6 @@ export const userService = {
       // Obtener estadísticas de pedidos para cada usuario
       const usersWithStats = await Promise.all(
         users.map(async (user) => {
-          // Obtener estadísticas de pedidos
           const { data: orders } = await supabase
             .from('orders')
             .select('total')
@@ -39,12 +318,8 @@ export const userService = {
             lastLogin: user.last_login,
             orders: orderCount,
             totalSpent: totalSpent,
-            address: '', // Se puede obtener de la tabla addresses
             avatar: user.avatar_url,
-            verified: user.email_verified,
-            documentType: user.document_type,
-            documentNumber: user.document_number,
-            dateOfBirth: user.date_of_birth
+            verified: user.email_verified
           };
         })
       );
@@ -56,146 +331,17 @@ export const userService = {
     }
   },
 
-  // Obtener un usuario específico con dirección
-  async getUserById(userId) {
-    try {
-      const { data: user, error } = await supabase
-        .from('user_profiles')
-        .select(`
-          *,
-          addresses (*)
-        `)
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-
-      // Obtener estadísticas
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('total')
-        .eq('user_id', userId)
-        .neq('status', 'cancelled');
-
-      const orderCount = orders?.length || 0;
-      const totalSpent = orders?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
-
-      return {
-        id: user.id,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        status: user.is_active ? 'active' : 'inactive',
-        createdAt: user.created_at,
-        lastLogin: user.last_login,
-        orders: orderCount,
-        totalSpent: totalSpent,
-        addresses: user.addresses || [],
-        avatar: user.avatar_url,
-        verified: user.email_verified,
-        documentType: user.document_type,
-        documentNumber: user.document_number,
-        dateOfBirth: user.date_of_birth
-      };
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error;
-    }
-  },
-
-  // Crear usuario (requiere auth admin)
-  async createUser(userData) {
-    try {
-      // Nota: Crear usuarios con auth requiere permisos de admin de Supabase
-      // Esta es una implementación simplificada
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password || Math.random().toString(36).slice(-8), // Generar password temporal
-        email_confirm: userData.verified,
-        user_metadata: {
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone
-        }
-      });
-
-      if (error) throw error;
-
-      // Crear perfil
-      const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .insert([{
-          id: data.user.id,
-          email: userData.email,
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          phone: userData.phone,
-          role: userData.role || 'customer',
-          is_active: userData.status === 'active',
-          email_verified: userData.verified
-        }])
-        .select()
-        .single();
-
-      if (profileError) throw profileError;
-
-      return profile;
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
-  },
-
-  // Actualizar usuario
   async updateUser(userId, userData) {
-  try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .update({
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        phone: userData.phone,
-        role: userData.role, // Ahora sí se puede cambiar
-        is_active: userData.status === 'active',
-        email_verified: userData.verified,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error updating user:', error);
-    throw error;
-  }
-},
-
-  async changeUserRole(userId, newRole) {
-  try {
-    const { data, error } = await supabase.rpc('update_user_role', {
-      target_user_id: userId,
-      new_role: newRole
-    });
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error changing user role:', error);
-    throw error;
-  }
-},
-  
-  // Cambiar estado del usuario
-  async updateUserStatus(userId, isActive) {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .update({ 
-          is_active: isActive,
+        .update({
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          phone: userData.phone,
+          role: userData.role,
+          is_active: userData.status === 'active',
+          email_verified: userData.verified,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId)
@@ -205,15 +351,13 @@ export const userService = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error updating user status:', error);
+      console.error('Error updating user:', error);
       throw error;
     }
   },
 
-  // Eliminar usuario (soft delete)
   async deleteUser(userId) {
     try {
-      // En lugar de eliminar, desactivar
       const { error } = await supabase
         .from('user_profiles')
         .update({ 
@@ -225,87 +369,6 @@ export const userService = {
       if (error) throw error;
     } catch (error) {
       console.error('Error deleting user:', error);
-      throw error;
-    }
-  },
-
-  // Obtener estadísticas de usuarios
-  async getUserStats() {
-    try {
-      const { data: users, error } = await supabase
-        .from('user_profiles')
-        .select('id, role, is_active, email_verified, created_at');
-
-      if (error) throw error;
-
-      // Obtener ingresos totales
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('total, payment_status')
-        .eq('payment_status', 'paid');
-
-      const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
-
-      const stats = {
-        totalUsers: users.length,
-        activeUsers: users.filter(u => u.is_active).length,
-        adminUsers: users.filter(u => u.role === 'admin').length,
-        verifiedUsers: users.filter(u => u.email_verified).length,
-        totalRevenue: totalRevenue,
-        newUsersThisMonth: users.filter(u => {
-          const userDate = new Date(u.created_at);
-          const now = new Date();
-          return userDate.getMonth() === now.getMonth() && 
-                 userDate.getFullYear() === now.getFullYear();
-        }).length
-      };
-
-      return stats;
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-      throw error;
-    }
-  },
-
-  // Obtener direcciones de un usuario
-  async getUserAddresses(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', userId)
-        .order('is_default', { ascending: false });
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error fetching user addresses:', error);
-      throw error;
-    }
-  },
-
-  // Actualizar dirección predeterminada
-  async setDefaultAddress(userId, addressId) {
-    try {
-      // Quitar default de todas las direcciones del usuario
-      await supabase
-        .from('addresses')
-        .update({ is_default: false })
-        .eq('user_id', userId);
-
-      // Establecer la nueva dirección por defecto
-      const { data, error } = await supabase
-        .from('addresses')
-        .update({ is_default: true })
-        .eq('id', addressId)
-        .eq('user_id', userId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error setting default address:', error);
       throw error;
     }
   }
