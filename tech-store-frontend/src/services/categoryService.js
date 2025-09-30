@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 
 export const categoryService = {
   // Obtener todas las categorías con subcategorías
