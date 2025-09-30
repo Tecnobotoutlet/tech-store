@@ -37,6 +37,7 @@ export const ProductProvider = ({ children }) => {
       isActive: product.is_active !== false,
       isFeatured: product.is_featured || false,
       isNew: product.is_new || false,
+      isFromAdmin: product.is_from_admin || false,
       inStock: product.stock_quantity > 0,
       discount: product.discount || 0,
       rating: parseFloat(product.rating || 4.5),
@@ -109,6 +110,7 @@ export const ProductProvider = ({ children }) => {
       is_active: productData.isActive !== false,
       is_featured: productData.isFeatured || false,
       is_new: productData.isNew || false,
+      is_from_admin: true,
       discount: productData.discount || 0,
       rating: parseFloat(productData.rating || 4.5),
       reviews: parseInt(productData.reviews || 0),
@@ -202,6 +204,7 @@ return newProduct;
         specifications: productData.specifications || [],
         features: productData.features || [],
         variants: productData.variants || [],
+        is_from_admin: true,
         updated_at: new Date().toISOString()
       };
 
