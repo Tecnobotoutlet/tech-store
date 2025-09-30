@@ -133,71 +133,69 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   };
 
   const createOrder = async () => {
-    try {
-      const orderData = {
-        user_id: user?.id || null,
-        total: total,
-        subtotal: total,
-        shipping_cost: 0,
-        tax: 0,
-        status: 'pending',
-        payment_status: 'pending',
-        payment_method: formData.paymentMethod,
-        shipping_address: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-          addressDetails: formData.addressDetails,
-          city: formData.city,
-          department: formData.department,
-          postalCode: formData.postalCode,
-          neighborhood: formData.neighborhood,
-          phone: formData.phone
-        },
-        customer_email: formData.email,
-        customer_phone: formData.phone,
-        customer_name: `${formData.firstName} ${formData.lastName}`,
-        notes: ''
-      };
+  try {
+    const orderData = {
+      user_id: user?.id || null,
+      total: total,
+      subtotal: total,
+      shipping_cost: 0,
+      tax: 0,
+      discount: 0,
+      status: 'pending',
+      payment_status: 'pending',
+      payment_method: formData.paymentMethod,
+      customer_email: formData.email,
+      customer_phone: formData.phone,
+      customer_name: `${formData.firstName} ${formData.lastName}`,
+      shipping_full_name: `${formData.firstName} ${formData.lastName}`,
+      shipping_phone: formData.phone,
+      shipping_address_line1: formData.address,
+      shipping_address_line2: formData.addressDetails || null,
+      shipping_city: formData.city,
+      shipping_state: formData.department,
+      shipping_postal_code: formData.postalCode || null,
+      shipping_country: 'CO',
+      customer_notes: null,
+      admin_notes: null
+    };
 
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([orderData])
-        .select()
-        .single();
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert([orderData])
+      .select()
+      .single();
 
-      if (orderError) {
-        console.error('Error creating order:', orderError);
-        throw orderError;
-      }
-
-      console.log('Order created:', order.id);
-
-      const orderItems = items.map(item => ({
-        order_id: order.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-        subtotal: item.price * item.quantity
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        console.error('Error creating order items:', itemsError);
-        throw itemsError;
-      }
-
-      return order;
-
-    } catch (error) {
-      console.error('Error in createOrder:', error);
-      throw error;
+    if (orderError) {
+      console.error('Error creating order:', orderError);
+      throw orderError;
     }
-  };
 
+    console.log('Order created:', order.id);
+
+    const orderItems = items.map(item => ({
+      order_id: order.id,
+      product_id: item.id,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.price * item.quantity
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) {
+      console.error('Error creating order items:', itemsError);
+      throw itemsError;
+    }
+
+    return order;
+
+  } catch (error) {
+    console.error('Error in createOrder:', error);
+    throw error;
+  }
+};
   const handleCardTokenize = async (tokenizedCardData) => {
     if (!validateStep(3)) return;
 
