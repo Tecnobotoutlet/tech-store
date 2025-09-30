@@ -136,10 +136,34 @@ export const ProductProvider = ({ children }) => {
     if (error) throw error;
 
     const newProduct = normalizeProduct(data);
-    setProducts(prev => [newProduct, ...prev]);
 
-    console.log('✅ addProduct COMPLETADO', { productId: newProduct.id });
-    return newProduct;
+console.log('📊 Antes de setProducts:', {
+  productosActuales: products.length,
+  nuevoProductoId: newProduct.id
+});
+
+setProducts(prev => {
+  console.log('🔄 setProducts ejecutándose:', {
+    prevLength: prev.length,
+    nuevoProductoId: newProduct.id
+  });
+  
+  // Verificar si ya existe
+  const yaExiste = prev.find(p => p.id === newProduct.id);
+  if (yaExiste) {
+    console.warn('⚠️ PRODUCTO YA EXISTE EN EL ESTADO');
+    return prev; // No agregarlo de nuevo
+  }
+  
+  const newState = [newProduct, ...prev];
+  console.log('✨ Nuevo estado creado:', {
+    nuevoLength: newState.length
+  });
+  return newState;
+});
+
+console.log('✅ addProduct COMPLETADO', { productId: newProduct.id });
+return newProduct;
   } catch (error) {
     console.error('❌ Error adding product:', error);
     setError('Error al agregar producto');
