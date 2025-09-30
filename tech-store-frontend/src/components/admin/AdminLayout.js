@@ -122,15 +122,8 @@ const AdminLayout = ({ children, currentSection, onSectionChange }) => {
             <div className="text-sm text-gray-400">Administrador</div>
           </div>
         </div>
-        <button
-          onClick={onBackToStore}
-          className="w-full flex items-center space-x-2 px-3 py-2 mb-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-        >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Volver a la Tienda</span>
-        </button>
-              
-        <button
+            
+          <button
           onClick={handleLogout}
           className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
         >
