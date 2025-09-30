@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import CreditCardForm from './CreditCardForm';
 import wompiService from '../services/wompiService';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../supabaseClient';
 import { 
   ArrowLeft, 
   CreditCard, 
