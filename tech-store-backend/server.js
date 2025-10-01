@@ -434,13 +434,24 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
     const wompiData = await wompiResponse.json();
 
     if (!wompiResponse.ok) {
-      console.error('Wompi API error:', wompiData);
-      throw new Error(
-        wompiData.error?.reason || 
-        wompiData.error?.messages?.join(', ') || 
-        'Error creando transacción en Wompi'
-      );
+  console.error('Wompi API error completo:', JSON.stringify(wompiData, null, 2));
+  
+  let errorMessage = 'Error creando transacción en Wompi';
+  
+  if (wompiData.error) {
+    if (wompiData.error.reason) {
+      errorMessage = wompiData.error.reason;
+    } else if (wompiData.error.messages) {
+      errorMessage = Array.isArray(wompiData.error.messages) 
+        ? wompiData.error.messages.join(', ')
+        : JSON.stringify(wompiData.error.messages);
+    } else if (wompiData.error.message) {
+      errorMessage = wompiData.error.message;
     }
+  }
+  
+  throw new Error(errorMessage);
+}
 
     console.log('Wompi transaction created:', wompiData.data.id);
 
