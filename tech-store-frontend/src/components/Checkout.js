@@ -275,64 +275,90 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
   // HANDLER: Nequi
   const handleNequiPayment = async (phoneNumber) => {
-    if (!validateStep(3)) return;
+  if (!validateStep(3)) return;
 
-    setIsProcessing(true);
+  setIsProcessing(true);
 
-    try {
-      const order = await createOrder();
+  try {
+    const order = await createOrder();
 
-      const result = await wompiService.processNequiPayment({
-        orderId: order.id,
-        amount: total,
-        phoneNumber: phoneNumber,
-        customerData: getCustomerData(),
-        shippingAddress: getShippingAddress()
-      });
+    const result = await wompiService.processNequiPayment({
+      orderId: order.id,
+      amount: total,
+      phoneNumber: phoneNumber,
+      customerData: getCustomerData(),
+      shippingAddress: getShippingAddress()
+    });
 
-      if (result.success) {
+    if (result.success) {
+      // IMPORTANTE: Si hay paymentUrl, redirigir SIEMPRE
+      if (result.paymentUrl) {
+        console.log('Redirigiendo a Nequi:', result.paymentUrl);
+        window.location.href = result.paymentUrl;
+        return; // No continuar con el resto
+      }
+      
+      // Solo si NO hay paymentUrl y es APPROVED
+      if (result.status === 'APPROVED') {
+        clearCart();
         handlePaymentSuccess({ ...result, orderId: order.id });
       } else {
-        throw new Error(result.error || 'Error procesando Nequi');
+        // PENDING sin URL (raro, pero manejarlo)
+        throw new Error('Esperando confirmación del pago');
       }
-
-    } catch (error) {
-      handlePaymentError(error);
-    } finally {
-      setIsProcessing(false);
+    } else {
+      throw new Error(result.error || 'Error procesando Nequi');
     }
-  };
+
+  } catch (error) {
+    handlePaymentError(error);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   // HANDLER: PSE
   const handlePSEPayment = async (pseData) => {
-    if (!validateStep(3)) return;
+  if (!validateStep(3)) return;
 
-    setIsProcessing(true);
+  setIsProcessing(true);
 
-    try {
-      const order = await createOrder();
+  try {
+    const order = await createOrder();
 
-      const result = await wompiService.processPSEPayment({
-        orderId: order.id,
-        amount: total,
-        customerData: getCustomerData(),
-        pseData: pseData,
-        shippingAddress: getShippingAddress()
-      });
+    const result = await wompiService.processPSEPayment({
+      orderId: order.id,
+      amount: total,
+      customerData: getCustomerData(),
+      pseData: pseData,
+      shippingAddress: getShippingAddress()
+    });
 
-      if (result.success) {
+    if (result.success) {
+      // IMPORTANTE: Si hay paymentUrl, redirigir SIEMPRE
+      if (result.paymentUrl) {
+        console.log('Redirigiendo a PSE:', result.paymentUrl);
+        window.location.href = result.paymentUrl;
+        return; // No continuar
+      }
+      
+      // Solo si NO hay URL y es APPROVED
+      if (result.status === 'APPROVED') {
+        clearCart();
         handlePaymentSuccess({ ...result, orderId: order.id });
       } else {
-        throw new Error(result.error || 'Error procesando PSE');
+        throw new Error('Esperando confirmación del pago');
       }
-
-    } catch (error) {
-      handlePaymentError(error);
-    } finally {
-      setIsProcessing(false);
+    } else {
+      throw new Error(result.error || 'Error procesando PSE');
     }
-  };
 
+  } catch (error) {
+    handlePaymentError(error);
+  } finally {
+    setIsProcessing(false);
+  }
+};
   // HANDLER: Bancolombia
   const handleBancolombiaPayment = async () => {
     if (!validateStep(3)) return;
