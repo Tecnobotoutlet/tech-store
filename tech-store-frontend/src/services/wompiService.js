@@ -240,6 +240,9 @@ class WompiService {
       const reference = this.generateReference();
       console.log('🏦 Procesando pago con PSE:', reference);
 
+       // AGREGAR ESTE LOG AQUÍ:
+      console.log('Amount recibido en wompiService:', amount);
+      console.log('Debe ser >= 150000 (mínimo $1,500)');
       // Validar monto mínimo
       if (amount < 150000) {
         throw new Error('El monto mínimo para transacciones es $1,500 COP');
