@@ -291,25 +291,45 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     });
 
     if (result.success) {
-      // IMPORTANTE: Si hay paymentUrl, redirigir SIEMPRE
-      if (result.paymentUrl) {
-        console.log('Redirigiendo a Nequi:', result.paymentUrl);
-        localStorage.setItem('payment_reference', result.reference);
-        localStorage.setItem('payment_transaction_id', result.transactionId);
-        localStorage.setItem('order_id', order.id.toString());
-        window.location.href = result.paymentUrl;
-        return; // No continuar con el resto
-      }
-      
-      // Solo si NO hay paymentUrl y es APPROVED
-      if (result.status === 'APPROVED') {
-        clearCart();
-        handlePaymentSuccess({ ...result, orderId: order.id });
-      } else {
-        // PENDING sin URL (raro, pero manejarlo)
-        throw new Error('Esperando confirmación del pago');
-      }
-    } else {
+  // Si hay URL, redirigir
+  if (result.paymentUrl) {
+    console.log('Redirigiendo a Nequi:', result.paymentUrl);
+    localStorage.setItem('payment_reference', result.reference);
+    localStorage.setItem('payment_transaction_id', result.transactionId);
+    localStorage.setItem('order_id', order.id.toString());
+    window.location.href = result.paymentUrl;
+    return;
+  }
+  
+  // Si NO hay URL (notificación push), mostrar mensaje de espera
+  if (result.status === 'PENDING') {
+    console.log('Nequi: Esperando aprobación en el teléfono');
+    localStorage.setItem('payment_reference', result.reference);
+    localStorage.setItem('payment_transaction_id', result.transactionId);
+    clearCart();
+    
+    // Redirigir a página de "esperando pago"
+    if (onPaymentSuccess) {
+      onPaymentSuccess({
+        reference: result.reference,
+        transactionId: result.transactionId,
+        amount: total,
+        orderId: order.id,
+        items: items,
+        customerData: formData,
+        status: 'PENDING',
+        paymentMethod: 'NEQUI'
+      });
+    }
+    return;
+  }
+  
+  // Si está APPROVED sin URL
+  if (result.status === 'APPROVED') {
+    clearCart();
+    handlePaymentSuccess({ ...result, orderId: order.id });
+  }
+}else {
       throw new Error(result.error || 'Error procesando Nequi');
     }
 
