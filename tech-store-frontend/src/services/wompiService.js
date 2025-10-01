@@ -1,11 +1,9 @@
-// src/services/wompiService.js - Versión mejorada con seguridad
+// src/services/wompiService.js - Versión corregida
 const WOMPI_CONFIG = {
-  // La llave pública es la única que va en el frontend
   publicKey: process.env.NODE_ENV === 'production'
     ? process.env.REACT_APP_WOMPI_PUBLIC_KEY_PROD
     : 'pub_test_KaQFpojdIbESo6SVCqEVvidZd6bdCbC3',
   
-  // SIEMPRE usar el backend para transacciones (nunca directo a Wompi)
   apiURL: process.env.REACT_APP_API_URL || 'http://localhost:3001'
 };
 
@@ -25,7 +23,7 @@ class WompiService {
   }
 
   /**
-   * Obtener token de aceptación desde el backend (MÁS SEGURO)
+   * Obtener token de aceptación desde el backend
    */
   async getAcceptanceToken() {
     try {
@@ -49,7 +47,7 @@ class WompiService {
   }
 
   /**
-   * Crear transacción a través del backend (MÉTODO PRINCIPAL - MÁS SEGURO)
+   * Crear transacción a través del backend
    */
   async createTransaction(transactionData) {
     try {
@@ -61,12 +59,13 @@ class WompiService {
         body: JSON.stringify(transactionData)
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error creando transacción');
+        throw new Error(result.message || result.error || 'Error creando transacción');
       }
 
-      return await response.json();
+      return result;
     } catch (error) {
       console.error('Error en createTransaction:', error);
       throw error;
@@ -112,10 +111,13 @@ class WompiService {
       const reference = this.generateReference();
       console.log('💳 Procesando pago con tarjeta:', reference);
 
-      // Obtener token de aceptación
+      // Validar monto mínimo
+      if (amount < 150000) {
+        throw new Error('El monto mínimo para transacciones es $1,500 COP');
+      }
+
       const acceptanceToken = await this.getAcceptanceToken();
 
-      // Crear transacción vía backend
       const result = await this.createTransaction({
         orderId,
         amount,
@@ -124,7 +126,7 @@ class WompiService {
         customerEmail: customerData.email,
         paymentMethod: {
           type: 'CARD',
-          token: cardData.token || cardData.number, // Si ya está tokenizado o es número
+          token: cardData.token || cardData.number,
           installments: installments
         },
         acceptanceToken,
@@ -144,7 +146,7 @@ class WompiService {
         transaction: result.transaction,
         reference: result.reference,
         status: result.status,
-        transactionId: result.transaction?.id,
+        transactionId: result.transactionId,
         paymentUrl: result.paymentUrl
       };
 
@@ -173,6 +175,11 @@ class WompiService {
     try {
       const reference = this.generateReference();
       console.log('📱 Procesando pago con Nequi:', reference);
+
+      // Validar monto mínimo
+      if (amount < 150000) {
+        throw new Error('El monto mínimo para transacciones es $1,500 COP');
+      }
 
       const acceptanceToken = await this.getAcceptanceToken();
 
@@ -203,8 +210,8 @@ class WompiService {
         transaction: result.transaction,
         reference: result.reference,
         status: result.status,
-        paymentUrl: result.paymentUrl, // URL para completar pago en Nequi
-        transactionId: result.transaction?.id
+        paymentUrl: result.paymentUrl,
+        transactionId: result.transactionId
       };
 
     } catch (error) {
@@ -233,6 +240,11 @@ class WompiService {
       const reference = this.generateReference();
       console.log('🏦 Procesando pago con PSE:', reference);
 
+      // Validar monto mínimo
+      if (amount < 150000) {
+        throw new Error('El monto mínimo para transacciones es $1,500 COP');
+      }
+
       const acceptanceToken = await this.getAcceptanceToken();
 
       const result = await this.createTransaction({
@@ -243,11 +255,11 @@ class WompiService {
         customerEmail: customerData.email,
         paymentMethod: {
           type: 'PSE',
-          user_type: pseData.userType, // 0 = Persona, 1 = Empresa
-          user_legal_id_type: pseData.documentType,
+          user_type: pseData.userType || '0',
+          user_legal_id_type: pseData.documentType || 'CC',
           user_legal_id: pseData.document,
           financial_institution_code: pseData.bankCode,
-          payment_description: `Pedido #${orderId} - TechStore`
+          payment_description: `Pedido ${orderId}`
         },
         acceptanceToken,
         customerData: {
@@ -256,9 +268,16 @@ class WompiService {
           lastName: customerData.lastName,
           phone: customerData.phone,
           document: pseData.document,
-          documentType: pseData.documentType
+          documentType: pseData.documentType || 'CC'
         },
         shippingAddress
+      });
+
+      console.log('PSE Response:', {
+        success: result.success,
+        hasPaymentUrl: !!result.paymentUrl,
+        paymentUrl: result.paymentUrl,
+        status: result.status
       });
 
       return {
@@ -266,8 +285,8 @@ class WompiService {
         transaction: result.transaction,
         reference: result.reference,
         status: result.status,
-        paymentUrl: result.paymentUrl, // URL del banco para completar pago
-        transactionId: result.transaction?.id
+        paymentUrl: result.paymentUrl,
+        transactionId: result.transactionId
       };
 
     } catch (error) {
@@ -282,7 +301,7 @@ class WompiService {
 
   /**
    * ============================================
-   * MÉTODO 4: PAGO CON BANCOLOMBIA (Botón o Transferencia)
+   * MÉTODO 4: PAGO CON BANCOLOMBIA
    * ============================================
    */
   async processBancolombiaPayment({
@@ -295,6 +314,11 @@ class WompiService {
       const reference = this.generateReference();
       console.log('🏦 Procesando pago con Bancolombia:', reference);
 
+      // Validar monto mínimo
+      if (amount < 150000) {
+        throw new Error('El monto mínimo para transacciones es $1,500 COP');
+      }
+
       const acceptanceToken = await this.getAcceptanceToken();
 
       const result = await this.createTransaction({
@@ -305,10 +329,10 @@ class WompiService {
         customerEmail: customerData.email,
         paymentMethod: {
           type: 'BANCOLOMBIA_TRANSFER',
-          user_type: 0, // Persona natural
+          user_type: 0,
           user_legal_id: customerData.document,
-          user_legal_id_type: customerData.documentType,
-          payment_description: `Pedido #${orderId} - TechStore`
+          user_legal_id_type: customerData.documentType || 'CC',
+          payment_description: `Pedido ${orderId}`
         },
         acceptanceToken,
         customerData,
@@ -321,7 +345,7 @@ class WompiService {
         reference: result.reference,
         status: result.status,
         paymentUrl: result.paymentUrl,
-        transactionId: result.transaction?.id
+        transactionId: result.transactionId
       };
 
     } catch (error) {
@@ -351,7 +375,7 @@ class WompiService {
       return result.data || [];
     } catch (error) {
       console.error('Error obteniendo bancos PSE:', error);
-      return this.getDefaultPSEBanks(); // Fallback
+      return this.getDefaultPSEBanks();
     }
   }
 
@@ -376,27 +400,21 @@ class WompiService {
   }
 
   /**
-   * Validar datos de tarjeta con algoritmo Luhn
+   * Validar datos de tarjeta
    */
   isValidCardNumber(number) {
     const cleaned = number.replace(/\s/g, '');
-    if (!/^\d{13,19}$/.test(cleaned)) {
-      return false;
-    }
+    if (!/^\d{13,19}$/.test(cleaned)) return false;
 
     let sum = 0;
     let shouldDouble = false;
 
     for (let i = cleaned.length - 1; i >= 0; i--) {
       let digit = parseInt(cleaned.charAt(i));
-
       if (shouldDouble) {
         digit *= 2;
-        if (digit > 9) {
-          digit -= 9;
-        }
+        if (digit > 9) digit -= 9;
       }
-
       sum += digit;
       shouldDouble = !shouldDouble;
     }
@@ -409,12 +427,10 @@ class WompiService {
    */
   getCardType(number) {
     const cleanNumber = number.replace(/\s/g, '');
-    
     if (/^4/.test(cleanNumber)) return 'visa';
     if (/^5[1-5]/.test(cleanNumber)) return 'mastercard';
     if (/^3[47]/.test(cleanNumber)) return 'amex';
     if (/^6(?:011|5)/.test(cleanNumber)) return 'discover';
-    
     return 'unknown';
   }
 
@@ -439,20 +455,6 @@ class WompiService {
   }
 
   /**
-   * Formatear monto para Wompi (centavos)
-   */
-  formatAmountForWompi(amount) {
-    return Math.round(amount * 100);
-  }
-
-  /**
-   * Formatear monto desde Wompi (de centavos a pesos)
-   */
-  formatAmountFromWompi(amountInCents) {
-    return amountInCents / 100;
-  }
-
-  /**
    * Obtener métodos de pago disponibles
    */
   getAvailablePaymentMethods() {
@@ -460,28 +462,24 @@ class WompiService {
       {
         id: 'card',
         name: 'Tarjeta de Crédito/Débito',
-        icon: '💳',
         description: 'Visa, Mastercard, American Express',
         enabled: true
       },
       {
         id: 'nequi',
         name: 'Nequi',
-        icon: '📱',
         description: 'Pago desde tu cuenta Nequi',
         enabled: true
       },
       {
         id: 'pse',
         name: 'PSE',
-        icon: '🏦',
         description: 'Pago desde tu banco',
         enabled: true
       },
       {
         id: 'bancolombia',
         name: 'Bancolombia',
-        icon: '🔵',
         description: 'Transferencia Bancolombia',
         enabled: true
       }
