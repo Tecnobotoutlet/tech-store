@@ -486,10 +486,15 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       status: wompiData.data.status
     });
 
-    if (['PSE', 'NEQUI', 'BANCOLOMBIA_TRANSFER'].includes(paymentMethod.type) && !paymentUrl) {
-      console.error('CRITICAL ERROR: Método de pago requiere URL pero no fue encontrada');
-      throw new Error('No se pudo obtener la URL de pago del banco. Por favor intenta nuevamente.');
-    }
+    if (paymentMethod.type === 'PSE' && !paymentUrl) {
+  console.error('CRITICAL ERROR: PSE requiere URL pero no fue encontrada');
+  throw new Error('No se pudo obtener la URL de pago del banco. Por favor intenta nuevamente.');
+}
+
+// Para Nequi/Bancolombia, la URL es opcional (push notification)
+if (!paymentUrl && ['NEQUI', 'BANCOLOMBIA_TRANSFER'].includes(paymentMethod.type)) {
+  console.log(`⚠️ ${paymentMethod.type} sin URL - usando notificación push`);
+}
 
     try {
       const { error: transactionError } = await supabase
