@@ -403,17 +403,30 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
 
     // Agregar dirección de envío
     if (shippingAddress && shippingAddress.address) {
-      transactionData.shipping_address = {
-        address_line_1: shippingAddress.address,
-        address_line_2: shippingAddress.addressDetails || '',
-        city: shippingAddress.city,
-        region: shippingAddress.state || shippingAddress.city,
-        country: 'CO',
-        phone_number: shippingAddress.phone || customerData?.phone || '',
-        postal_code: shippingAddress.postalCode || ''
-      };
-    }
+  const addressData = {
+    address_line_1: shippingAddress.address,
+    city: shippingAddress.city,
+    region: shippingAddress.state || shippingAddress.city,
+    country: 'CO',
+    phone_number: shippingAddress.phone || customerData?.phone || ''
+  };
 
+  // Solo agregar address_line_2 si tiene al menos 4 caracteres
+  if (shippingAddress.addressDetails && shippingAddress.addressDetails.trim().length >= 4) {
+    addressData.address_line_2 = shippingAddress.addressDetails;
+  } else {
+    addressData.address_line_2 = 'N/A'; // Valor por defecto válido
+  }
+
+  // Solo agregar postal_code si tiene entre 5 y 12 caracteres
+  if (shippingAddress.postalCode && shippingAddress.postalCode.trim().length >= 5) {
+    addressData.postal_code = shippingAddress.postalCode;
+  } else {
+    addressData.postal_code = '00000'; // Valor por defecto válido para Colombia
+  }
+
+  transactionData.shipping_address = addressData;
+}
     console.log('Creating Wompi transaction:', {
       reference,
       amount: amountInCents,
