@@ -331,7 +331,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
     const result = await wompiService.processPSEPayment({
       orderId: order.id,
-      amount: total,
+      amount: Math.round(total * 100),
       customerData: getCustomerData(),
       pseData: pseData,
       shippingAddress: getShippingAddress()
