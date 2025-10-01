@@ -244,7 +244,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
       const result = await wompiService.processCardPayment({
         orderId: order.id,
-        amount: total,
+        amount: Math.round(total * 100),
         currency: 'COP',
         cardData: cardData,
         customerData: getCustomerData(),
@@ -284,7 +284,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
     const result = await wompiService.processNequiPayment({
       orderId: order.id,
-      amount: total,
+      amount: Math.round(total * 100), //
       phoneNumber: phoneNumber,
       customerData: getCustomerData(),
       shippingAddress: getShippingAddress()
