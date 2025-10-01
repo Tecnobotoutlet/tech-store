@@ -433,25 +433,61 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
 
     // DEBUG: Ver qué devuelve Wompi
     console.log('=== WOMPI RESPONSE DEBUG ===');
-    console.log('Status:', wompiData.data.status);
-    console.log('Payment Method Type:', paymentMethod.type);
-    console.log('payment_link_url:', wompiData.data.payment_link_url);
-    console.log('async_payment_url:', wompiData.data.payment_method?.extra?.async_payment_url);
-    console.log('===========================');
+console.log('Full response:', JSON.stringify(wompiData, null, 2));
+console.log('Status:', wompiData.data?.status);
+console.log('Payment Method Type:', paymentMethod.type);
+console.log('payment_link_url:', wompiData.data?.payment_link_url);
+console.log('payment_method:', JSON.stringify(wompiData.data?.payment_method, null, 2));
+console.log('===========================');
 
     // Extraer URL de pago según el método
-    let paymentUrl = null;
-    
-    if (paymentMethod.type === 'PSE') {
-      // Para PSE, la URL viene en payment_link_url
-      paymentUrl = wompiData.data.payment_link_url;
-    } else if (paymentMethod.type === 'NEQUI') {
-      // Para Nequi, viene en extra.async_payment_url
-      paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
-    } else if (paymentMethod.type === 'BANCOLOMBIA_TRANSFER') {
-      // Para Bancolombia
-      paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
-    }
+    // Extraer URL de pago según el método
+let paymentUrl = null;
+
+if (paymentMethod.type === 'PSE') {
+  // PSE: la URL puede estar en varios lugares según la versión de Wompi
+  paymentUrl = wompiData.data.payment_link_url || 
+               wompiData.data.payment_method?.extra?.async_payment_url ||
+               wompiData.data.payment_method?.extra?.payment_url;
+  
+  console.log('PSE Payment URL extraída:', paymentUrl);
+  
+  if (!paymentUrl) {
+    console.error('❌ No se encontró payment URL en la respuesta de Wompi para PSE');
+    console.error('Estructura completa de data:', JSON.stringify(wompiData.data, null, 2));
+  }
+} else if (paymentMethod.type === 'NEQUI') {
+  // Para Nequi, viene en extra.async_payment_url
+  paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
+  
+  console.log('NEQUI Payment URL extraída:', paymentUrl);
+  
+  if (!paymentUrl) {
+    console.error('❌ No se encontró payment URL en la respuesta de Wompi para NEQUI');
+  }
+} else if (paymentMethod.type === 'BANCOLOMBIA_TRANSFER') {
+  // Para Bancolombia
+  paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
+  
+  console.log('BANCOLOMBIA Payment URL extraída:', paymentUrl);
+  
+  if (!paymentUrl) {
+    console.error('❌ No se encontró payment URL en la respuesta de Wompi para BANCOLOMBIA');
+  }
+}
+
+console.log('Payment URL extracted:', {
+  method: paymentMethod.type,
+  url: paymentUrl,
+  hasUrl: !!paymentUrl,
+  status: wompiData.data.status
+});
+
+// CRÍTICO: Si es PSE/NEQUI/BANCOLOMBIA y no hay URL, fallar
+if (['PSE', 'NEQUI', 'BANCOLOMBIA_TRANSFER'].includes(paymentMethod.type) && !paymentUrl) {
+  console.error('CRITICAL ERROR: Método de pago requiere URL pero no fue encontrada');
+  throw new Error('No se pudo obtener la URL de pago del banco. Por favor intenta nuevamente.');
+}
 
     console.log('Payment URL extracted:', {
       method: paymentMethod.type,
@@ -498,14 +534,29 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       // No fallar la transacción si el problema es solo la DB
     }
 
-    return res.status(200).json({
-      success: true,
-      transaction: wompiData.data,
-      reference: reference,
-      transactionId: wompiData.data.id,
-      paymentUrl: paymentUrl,
-      status: wompiData.data.status
-    });
+    // ASEGURAR que paymentUrl existe para PSE
+if (paymentMethod.type === 'PSE' && !paymentUrl) {
+  console.error('CRITICAL: PSE sin payment URL');
+  return res.status(500).json({
+    success: false,
+    error: 'No se pudo obtener URL de pago del banco',
+    message: 'Wompi no devolvió payment_link_url'
+  });
+}
+
+return res.status(200).json({
+  success: true,
+  transaction: wompiData.data,
+  reference: reference,
+  transactionId: wompiData.data.id,
+  paymentUrl: paymentUrl,
+  status: wompiData.data.status,
+  // DEBUG: incluir esto temporalmente
+  debug: {
+    hasPaymentUrl: !!paymentUrl,
+    paymentMethod: paymentMethod.type
+  }
+});
 
   } catch (error) {
     console.error('Error en create-transaction:', error);
