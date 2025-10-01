@@ -294,6 +294,9 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
       // IMPORTANTE: Si hay paymentUrl, redirigir SIEMPRE
       if (result.paymentUrl) {
         console.log('Redirigiendo a Nequi:', result.paymentUrl);
+        localStorage.setItem('payment_reference', result.reference);
+        localStorage.setItem('payment_transaction_id', result.transactionId);
+        localStorage.setItem('order_id', order.id.toString());
         window.location.href = result.paymentUrl;
         return; // No continuar con el resto
       }
@@ -338,6 +341,9 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
       // IMPORTANTE: Si hay paymentUrl, redirigir SIEMPRE
       if (result.paymentUrl) {
         console.log('Redirigiendo a PSE:', result.paymentUrl);
+        localStorage.setItem('payment_reference', result.reference);
+        localStorage.setItem('payment_transaction_id', result.transactionId);
+        localStorage.setItem('order_id', order.id.toString());
         window.location.href = result.paymentUrl;
         return; // No continuar
       }
