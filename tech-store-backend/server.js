@@ -27,17 +27,9 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS - Lista blanca de dominios permitidos
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'https://tech-store-bmro.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:3001'
-].filter(Boolean);
-
 // CORS simplificado para Vercel
 app.use(cors({
-  origin: '*', // Temporalmente permisivo para debug
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
@@ -52,9 +44,7 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-app.options('*', cors());
-
-// Rate limiting para endpoints públicos
+// Rate limiting
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -63,7 +53,6 @@ const publicLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Rate limiting MÁS ESTRICTO para Wompi
 const wompiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -221,47 +210,11 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      name, description, price, original_price, category, category_name,
-      subcategory, subcategory_name, brand, model, stock, stock_quantity,
-      image, images, is_active, is_featured, is_new, in_stock, discount,
-      rating, reviews, total_reviews, tags, warranty, shipping,
-      specifications, features, variants
-    } = req.body;
+    const updateData = { ...req.body, updated_at: new Date().toISOString() };
 
     const { data: product, error } = await supabase
       .from('products')
-      .update({
-        name,
-        description,
-        price,
-        original_price: original_price || null,
-        category,
-        category_name: category_name || category,
-        subcategory: subcategory || category,
-        subcategory_name: subcategory_name || category_name || category,
-        brand,
-        model: model || null,
-        stock: stock || stock_quantity || 0,
-        stock_quantity: stock_quantity || stock || 0,
-        image: image || null,
-        images: images || [],
-        is_active: is_active !== false,
-        is_featured: is_featured || false,
-        is_new: is_new || false,
-        in_stock: in_stock !== false,
-        discount: discount || 0,
-        rating: rating || 4.5,
-        reviews: reviews || 0,
-        total_reviews: total_reviews || 0,
-        tags: tags || [],
-        warranty: warranty || '12 meses de garantía',
-        shipping: shipping || 'Envío gratis en 24-48 horas',
-        specifications: specifications || [],
-        features: features || [],
-        variants: variants || [],
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .eq('is_active', true)
       .select()
@@ -378,8 +331,17 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       });
     }
 
+    // Validar monto mínimo (1500 pesos = 150000 centavos)
+    const amountInCents = Math.round(amount);
+    if (amountInCents < 150000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Monto inválido',
+        message: 'El monto mínimo para transacciones es $1,500 COP'
+      });
+    }
+
     // Generar firma de integridad
-    const amountInCents = Math.round(amount * 100);
     const integrityString = `${reference}${amountInCents}${currency}${process.env.WOMPI_INTEGRITY_SECRET}`;
     const integritySignature = crypto.createHash('sha256').update(integrityString).digest('hex');
 
@@ -401,32 +363,33 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       redirect_url: `${process.env.FRONTEND_URL}/payment-result?reference=${reference}`
     };
 
-    // Agregar dirección de envío
+    // Agregar dirección de envío (validada)
     if (shippingAddress && shippingAddress.address) {
-  const addressData = {
-    address_line_1: shippingAddress.address,
-    city: shippingAddress.city,
-    region: shippingAddress.state || shippingAddress.city,
-    country: 'CO',
-    phone_number: shippingAddress.phone || customerData?.phone || ''
-  };
+      const addressData = {
+        address_line_1: shippingAddress.address,
+        city: shippingAddress.city,
+        region: shippingAddress.state || shippingAddress.city,
+        country: 'CO',
+        phone_number: shippingAddress.phone || customerData?.phone || ''
+      };
 
-  // Solo agregar address_line_2 si tiene al menos 4 caracteres
-  if (shippingAddress.addressDetails && shippingAddress.addressDetails.trim().length >= 4) {
-    addressData.address_line_2 = shippingAddress.addressDetails;
-  } else {
-    addressData.address_line_2 = 'N/A'; // Valor por defecto válido
-  }
+      // Validar address_line_2 (mínimo 4 caracteres)
+      if (shippingAddress.addressDetails && shippingAddress.addressDetails.trim().length >= 4) {
+        addressData.address_line_2 = shippingAddress.addressDetails.trim();
+      } else {
+        addressData.address_line_2 = 'N/A '; // Valor por defecto válido
+      }
 
-  // Solo agregar postal_code si tiene entre 5 y 12 caracteres
-  if (shippingAddress.postalCode && shippingAddress.postalCode.trim().length >= 5) {
-    addressData.postal_code = shippingAddress.postalCode;
-  } else {
-    addressData.postal_code = '00000'; // Valor por defecto válido para Colombia
-  }
+      // Validar postal_code (entre 5 y 12 caracteres)
+      if (shippingAddress.postalCode && shippingAddress.postalCode.trim().length >= 5) {
+        addressData.postal_code = shippingAddress.postalCode.trim().substring(0, 12);
+      } else {
+        addressData.postal_code = '00000'; // Valor por defecto válido
+      }
 
-  transactionData.shipping_address = addressData;
-}
+      transactionData.shipping_address = addressData;
+    }
+
     console.log('Creating Wompi transaction:', {
       reference,
       amount: amountInCents,
@@ -447,26 +410,54 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
     const wompiData = await wompiResponse.json();
 
     if (!wompiResponse.ok) {
-  console.error('Wompi API error completo:', JSON.stringify(wompiData, null, 2));
-  
-  let errorMessage = 'Error creando transacción en Wompi';
-  
-  if (wompiData.error) {
-    if (wompiData.error.reason) {
-      errorMessage = wompiData.error.reason;
-    } else if (wompiData.error.messages) {
-      errorMessage = Array.isArray(wompiData.error.messages) 
-        ? wompiData.error.messages.join(', ')
-        : JSON.stringify(wompiData.error.messages);
-    } else if (wompiData.error.message) {
-      errorMessage = wompiData.error.message;
+      console.error('Wompi API error completo:', JSON.stringify(wompiData, null, 2));
+      
+      let errorMessage = 'Error creando transacción en Wompi';
+      
+      if (wompiData.error) {
+        if (wompiData.error.reason) {
+          errorMessage = wompiData.error.reason;
+        } else if (wompiData.error.messages) {
+          errorMessage = Array.isArray(wompiData.error.messages) 
+            ? wompiData.error.messages.join(', ')
+            : JSON.stringify(wompiData.error.messages);
+        } else if (wompiData.error.message) {
+          errorMessage = wompiData.error.message;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
-  }
-  
-  throw new Error(errorMessage);
-}
 
     console.log('Wompi transaction created:', wompiData.data.id);
+
+    // DEBUG: Ver qué devuelve Wompi
+    console.log('=== WOMPI RESPONSE DEBUG ===');
+    console.log('Status:', wompiData.data.status);
+    console.log('Payment Method Type:', paymentMethod.type);
+    console.log('payment_link_url:', wompiData.data.payment_link_url);
+    console.log('async_payment_url:', wompiData.data.payment_method?.extra?.async_payment_url);
+    console.log('===========================');
+
+    // Extraer URL de pago según el método
+    let paymentUrl = null;
+    
+    if (paymentMethod.type === 'PSE') {
+      // Para PSE, la URL viene en payment_link_url
+      paymentUrl = wompiData.data.payment_link_url;
+    } else if (paymentMethod.type === 'NEQUI') {
+      // Para Nequi, viene en extra.async_payment_url
+      paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
+    } else if (paymentMethod.type === 'BANCOLOMBIA_TRANSFER') {
+      // Para Bancolombia
+      paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
+    }
+
+    console.log('Payment URL extracted:', {
+      method: paymentMethod.type,
+      url: paymentUrl,
+      hasUrl: !!paymentUrl
+    });
 
     // Guardar en Supabase
     try {
@@ -477,7 +468,7 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
           user_id: customerData?.userId || null,
           wompi_transaction_id: wompiData.data.id,
           wompi_reference: reference,
-          amount: amount,
+          amount: amountInCents / 100,
           currency: currency,
           status: wompiData.data.status,
           payment_method_type: paymentMethod.type,
@@ -511,7 +502,8 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       success: true,
       transaction: wompiData.data,
       reference: reference,
-      paymentUrl: wompiData.data.payment_method?.extra?.async_payment_url || null,
+      transactionId: wompiData.data.id,
+      paymentUrl: paymentUrl,
       status: wompiData.data.status
     });
 
@@ -547,7 +539,7 @@ app.get('/api/wompi/transaction-status/:id', async (req, res) => {
 
     res.json({
       success: true,
-      transaction: data.data
+      ...data.data
     });
   } catch (error) {
     console.error('Error getting transaction status:', error);
@@ -630,7 +622,7 @@ app.post('/api/wompi/webhook', async (req, res) => {
         'VOIDED': 'cancelled'
       }[transaction.status] || 'pending';
 
-      // Buscar la orden relacionada con esta transacción
+      // Buscar la orden relacionada
       const { data: transactionData } = await supabase
         .from('transactions')
         .select('order_id')
