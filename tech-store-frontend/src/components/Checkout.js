@@ -284,56 +284,50 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
     const result = await wompiService.processNequiPayment({
       orderId: order.id,
-      amount: Math.round(total * 100), //
+      amount: Math.round(total * 100),
       phoneNumber: phoneNumber,
       customerData: getCustomerData(),
       shippingAddress: getShippingAddress()
     });
 
     if (result.success) {
-  // Si hay URL, redirigir
-  if (result.paymentUrl) {
-    console.log('Redirigiendo a Nequi:', result.paymentUrl);
-    localStorage.setItem('payment_reference', result.reference);
-    localStorage.setItem('payment_transaction_id', result.transactionId);
-    localStorage.setItem('order_id', order.id.toString());
-    window.location.href = result.paymentUrl;
-    return;
-  }
-  
-  // Si NO hay URL (notificación push), mostrar mensaje de espera
-  if (result.status === 'PENDING') {
-    console.log('Nequi: Esperando aprobación en el teléfono');
-    localStorage.setItem('payment_reference', result.reference);
-    localStorage.setItem('payment_transaction_id', result.transactionId);
-    clearCart();
-    
-    // Redirigir a página de "esperando pago"
-    if (onPaymentSuccess) {
-      onPaymentSuccess({
-        reference: result.reference,
-        transactionId: result.transactionId,
-        amount: total,
-        orderId: order.id,
-        items: items,
-        customerData: formData,
-        status: 'PENDING',
-        paymentMethod: 'NEQUI'
-      });
-    }
-    return;
-  }
-  
-  // Si está APPROVED sin URL
-  if (result.status === 'APPROVED') {
-    clearCart();
-    handlePaymentSuccess({ ...result, orderId: order.id });
-  }
-}else {
+      console.log('Resultado Nequi:', result);
+      
+      // Guardar info en localStorage
+      localStorage.setItem('payment_reference', result.reference);
+      localStorage.setItem('payment_transaction_id', result.transactionId);
+      localStorage.setItem('order_id', order.id.toString());
+      
+      // Si hay URL, redirigir
+      if (result.paymentUrl) {
+        console.log('Redirigiendo a Nequi:', result.paymentUrl);
+        window.location.href = result.paymentUrl;
+        return;
+      }
+      
+      // Si NO hay URL (notificación push normal de Nequi)
+      console.log('Nequi: Transacción creada, esperando aprobación en el teléfono');
+      clearCart();
+      
+      // Ir a página de resultado con estado pendiente
+      if (onPaymentSuccess) {
+        onPaymentSuccess({
+          reference: result.reference,
+          transactionId: result.transactionId,
+          amount: total,
+          orderId: order.id,
+          items: items,
+          customerData: formData,
+          status: 'PENDING',
+          paymentMethod: 'NEQUI'
+        });
+      }
+    } else {
       throw new Error(result.error || 'Error procesando Nequi');
     }
 
   } catch (error) {
+    console.error('Error en Nequi payment:', error);
     handlePaymentError(error);
   } finally {
     setIsProcessing(false);
