@@ -53,6 +53,8 @@ app.use(cors({
   maxAge: 86400
 }));
 
+app.options('*', cors());
+
 // Rate limiting para endpoints públicos
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
