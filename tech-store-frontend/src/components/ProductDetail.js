@@ -1,7 +1,9 @@
+// src/components/ProductDetail.js - Versión Completa con Selector de Variantes
+
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Star, Heart, ShoppingCart, Share2, Truck, Shield, RotateCcw, Minus, Plus, Check, AlertCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { useProducts } from '../context/ProductContext'; // ← NUEVO
+import { useProducts } from '../context/ProductContext';
 import ImageGallery from './ImageGallery';
 import ProductSpecs from './ProductSpecs';
 import ProductReviews from './ProductReviews';
@@ -9,24 +11,39 @@ import RelatedProducts from './RelatedProducts';
 import { productReviews } from '../data/products';
 
 const ProductDetail = ({ productId, onBack, onProductClick }) => {
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedVariants, setSelectedVariants] = useState({});
+  const [variantError, setVariantError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
 
   const { addToCart, toggleWishlist, isInWishlist } = useCart();
-  const { getProductById, getProductsByCategory } = useProducts(); // ← NUEVO
+  const { getProductById, getProductsByCategory } = useProducts();
 
-  // ← CAMBIO: Usar contexto en lugar de sampleProducts
   const product = getProductById(productId);
   const reviews = productReviews[productId] || [];
 
+  // Inicializar variantes al cargar el producto
   useEffect(() => {
     if (product?.variants && product.variants.length > 0) {
-      // Seleccionar la primera variante disponible
-      const firstAvailable = product.variants.find(v => v.available);
-      setSelectedVariant(firstAvailable || product.variants[0]);
+      const variantsByType = product.variants.reduce((acc, variant) => {
+        if (!acc[variant.type]) {
+          acc[variant.type] = [];
+        }
+        acc[variant.type].push(variant);
+        return acc;
+      }, {});
+      
+      const initialSelection = {};
+      Object.keys(variantsByType).forEach(type => {
+        const firstAvailable = variantsByType[type].find(v => v.available && v.stock > 0);
+        if (firstAvailable) {
+          initialSelection[type] = firstAvailable;
+        }
+      });
+      
+      setSelectedVariants(initialSelection);
     }
   }, [product]);
 
@@ -69,20 +86,79 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
     ));
   };
 
-  const handleAddToCart = async () => {
-    setIsAddingToCart(true);
+  const handleSelectVariant = (type, variant) => {
+    if (variant.available && variant.stock > 0) {
+      setSelectedVariants(prev => ({
+        ...prev,
+        [type]: variant
+      }));
+      setVariantError('');
+    }
+  };
+
+  const getVariantTypes = () => {
+    if (!product?.variants || product.variants.length === 0) return {};
     
-    // Simular delay de red
+    return product.variants.reduce((acc, variant) => {
+      if (!acc[variant.type]) {
+        acc[variant.type] = [];
+      }
+      acc[variant.type].push(variant);
+      return acc;
+    }, {});
+  };
+
+  const getAvailableStock = () => {
+    const variantTypes = Object.keys(selectedVariants);
+    
+    if (variantTypes.length === 0) {
+      return product?.stockQuantity || product?.stock || 0;
+    }
+    
+    const matchingVariant = product?.variants?.find(v => {
+      return variantTypes.every(type => {
+        return selectedVariants[type]?.value === v.value && selectedVariants[type]?.type === v.type;
+      });
+    });
+    
+    return matchingVariant?.stock || 0;
+  };
+
+  const handleAddToCart = async () => {
+    const variantTypes = getVariantTypes();
+    const requiredTypes = Object.keys(variantTypes);
+    
+    if (requiredTypes.length > 0) {
+      const missingTypes = requiredTypes.filter(type => !selectedVariants[type]);
+      
+      if (missingTypes.length > 0) {
+        const typeLabels = {
+          'color': 'color',
+          'size': 'talla',
+          'storage': 'almacenamiento',
+          'ram': 'memoria RAM'
+        };
+        
+        const missingLabels = missingTypes.map(t => typeLabels[t] || t).join(', ');
+        setVariantError(`Por favor selecciona: ${missingLabels}`);
+        return;
+      }
+    }
+    
+    setIsAddingToCart(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     
+    const productWithVariants = {
+      ...product,
+      selectedVariants: Object.values(selectedVariants)
+    };
+    
     for (let i = 0; i < quantity; i++) {
-      addToCart(product);
+      addToCart(productWithVariants);
     }
     
     setIsAddingToCart(false);
     setShowNotification(true);
-    
-    // Ocultar notificación después de 3 segundos
     setTimeout(() => setShowNotification(false), 3000);
   };
 
@@ -92,7 +168,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
-    const maxStock = product.stockQuantity || product.stock || 0;
+    const maxStock = getAvailableStock();
     if (newQuantity >= 1 && newQuantity <= maxStock) {
       setQuantity(newQuantity);
     }
@@ -108,7 +184,6 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
   const savings = calculateSavings();
   const isProductInWishlist = isInWishlist(product.id);
   
-  // ← CAMBIO: Usar función del contexto para productos relacionados
   const relatedProducts = getProductsByCategory(product.category)
     .filter(p => p.id !== product.id)
     .slice(0, 4);
@@ -209,39 +284,118 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
               )}
             </div>
 
-            {/* Variants */}
+            {/* Selector de Variantes */}
             {product.variants && product.variants.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold">Color: {selectedVariant?.name}</h3>
-                <div className="flex flex-wrap gap-3">
-                  {product.variants.map((variant, index) => (
-                    <button
-                      key={index}
-                      onClick={() => variant.available && setSelectedVariant(variant)}
-                      disabled={!variant.available}
-                      className={`flex items-center space-x-3 px-4 py-3 border-2 rounded-lg transition-all ${
-                        selectedVariant?.name === variant.name
-                          ? 'border-blue-500 bg-blue-50'
-                          : variant.available
-                          ? 'border-gray-300 hover:border-gray-400'
-                          : 'border-gray-200 opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      <div
-                        className="w-6 h-6 rounded-full border-2 border-gray-300"
-                        style={{ backgroundColor: variant.color }}
-                      />
-                      <span className={`font-medium ${
-                        variant.available ? 'text-gray-900' : 'text-gray-400'
-                      }`}>
-                        {variant.name}
-                      </span>
-                      {!variant.available && (
-                        <span className="text-xs text-red-500">(Agotado)</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+              <div className="space-y-4">
+                {Object.entries(getVariantTypes()).map(([type, variants]) => {
+                  const typeLabels = {
+                    'color': 'Color',
+                    'size': 'Talla',
+                    'storage': 'Almacenamiento',
+                    'ram': 'Memoria RAM'
+                  };
+                  
+                  const selectedVariant = selectedVariants[type];
+                  
+                  return (
+                    <div key={type} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">
+                          {typeLabels[type] || type}: 
+                          {selectedVariant && (
+                            <span className="ml-2 text-blue-600">{selectedVariant.name}</span>
+                          )}
+                        </h3>
+                        {selectedVariant && selectedVariant.stock <= 5 && selectedVariant.stock > 0 && (
+                          <span className="text-sm text-orange-600 font-medium">
+                            ¡Solo quedan {selectedVariant.stock}!
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-3">
+                        {variants.map((variant, index) => {
+                          const isSelected = selectedVariant?.id === variant.id || selectedVariant?.value === variant.value;
+                          const isAvailable = variant.available && variant.stock > 0;
+                          
+                          return (
+                            <button
+                              key={variant.id || index}
+                              onClick={() => handleSelectVariant(type, variant)}
+                              disabled={!isAvailable}
+                              className={`relative flex items-center space-x-3 px-4 py-3 border-2 rounded-lg transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                                  : isAvailable
+                                  ? 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                                  : 'border-gray-200 opacity-50 cursor-not-allowed bg-gray-50'
+                              }`}
+                            >
+                              {/* Visual del variant */}
+                              {type === 'color' ? (
+                                <div className="relative">
+                                  <div
+                                    className="w-8 h-8 rounded-full border-2 border-gray-300"
+                                    style={{ backgroundColor: variant.value }}
+                                  />
+                                  {isSelected && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <Check className="w-5 h-5 text-white drop-shadow-lg" />
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center ${
+                                  isSelected ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white'
+                                }`}>
+                                  {isSelected ? (
+                                    <Check className="w-4 h-4 text-blue-600" />
+                                  ) : (
+                                    <span className="text-xs font-bold text-gray-600">
+                                      {variant.value?.substring(0, 2).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {/* Nombre y disponibilidad */}
+                              <div className="text-left">
+                                <span className={`font-medium block ${
+                                  isAvailable ? 'text-gray-900' : 'text-gray-400'
+                                }`}>
+                                  {variant.name}
+                                </span>
+                                {!isAvailable && (
+                                  <span className="text-xs text-red-500 block">Agotado</span>
+                                )}
+                                {isAvailable && variant.stock <= 5 && (
+                                  <span className="text-xs text-orange-500 block">
+                                    Stock: {variant.stock}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Indicador de selección */}
+                              {isSelected && (
+                                <div className="absolute top-1 right-1">
+                                  <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Error de selección */}
+                {variantError && (
+                  <div className="flex items-center space-x-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-medium">{variantError}</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -262,14 +416,14 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
                   </span>
                   <button
                     onClick={() => handleQuantityChange(1)}
-                    disabled={quantity >= (product.stockQuantity || product.stock || 0)}
+                    disabled={quantity >= getAvailableStock()}
                     className="p-3 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {product.stockQuantity || product.stock || 0} disponibles
+                  {getAvailableStock()} disponibles
                 </div>
               </div>
             </div>
@@ -279,7 +433,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
               <div className="flex space-x-4">
                 <button
                   onClick={handleAddToCart}
-                  disabled={!(product.inStock !== false && (product.stockQuantity || product.stock || 0) > 0) || isAddingToCart}
+                  disabled={getAvailableStock() === 0 || isAddingToCart}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
                 >
                   {isAddingToCart ? (
@@ -291,7 +445,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
                     <>
                       <ShoppingCart className="w-5 h-5" />
                       <span>
-                        {(product.inStock !== false && (product.stockQuantity || product.stock || 0) > 0) 
+                        {getAvailableStock() > 0 
                           ? 'Agregar al carrito' 
                           : 'No disponible'}
                       </span>
