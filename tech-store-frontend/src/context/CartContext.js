@@ -1,6 +1,6 @@
 // src/context/CartContext.js - Versión Completa con Soporte de Variantes
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useState } from 'react';
 
 // Crear el contexto
 const CartContext = createContext();
