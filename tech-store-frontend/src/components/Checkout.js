@@ -244,7 +244,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
       const result = await wompiService.processCardPayment({
         orderId: order.id,
-        amount: total,
+        amount: Math.round(total * 100),
         currency: 'COP',
         cardData: cardData,
         customerData: getCustomerData(),
@@ -275,64 +275,110 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
   // HANDLER: Nequi
   const handleNequiPayment = async (phoneNumber) => {
-    if (!validateStep(3)) return;
+  if (!validateStep(3)) return;
 
-    setIsProcessing(true);
+  setIsProcessing(true);
 
-    try {
-      const order = await createOrder();
+  try {
+    const order = await createOrder();
 
-      const result = await wompiService.processNequiPayment({
-        orderId: order.id,
-        amount: total,
-        phoneNumber: phoneNumber,
-        customerData: getCustomerData(),
-        shippingAddress: getShippingAddress()
-      });
+    const result = await wompiService.processNequiPayment({
+      orderId: order.id,
+      amount: Math.round(total * 100),
+      phoneNumber: phoneNumber,
+      customerData: getCustomerData(),
+      shippingAddress: getShippingAddress()
+    });
 
-      if (result.success) {
-        handlePaymentSuccess({ ...result, orderId: order.id });
-      } else {
-        throw new Error(result.error || 'Error procesando Nequi');
+    if (result.success) {
+      console.log('Resultado Nequi:', result);
+      
+      // Guardar info en localStorage
+      localStorage.setItem('payment_reference', result.reference);
+      localStorage.setItem('payment_transaction_id', result.transactionId);
+      localStorage.setItem('order_id', order.id.toString());
+      
+      // Si hay URL, redirigir
+      if (result.paymentUrl) {
+        console.log('Redirigiendo a Nequi:', result.paymentUrl);
+        window.location.href = result.paymentUrl;
+        return;
       }
-
-    } catch (error) {
-      handlePaymentError(error);
-    } finally {
-      setIsProcessing(false);
+      
+      // Si NO hay URL (notificación push normal de Nequi)
+      console.log('Nequi: Transacción creada, esperando aprobación en el teléfono');
+      clearCart();
+      
+      // Ir a página de resultado con estado pendiente
+      if (onPaymentSuccess) {
+        onPaymentSuccess({
+          reference: result.reference,
+          transactionId: result.transactionId,
+          amount: total,
+          orderId: order.id,
+          items: items,
+          customerData: formData,
+          status: 'PENDING',
+          paymentMethod: 'NEQUI'
+        });
+      }
+    } else {
+      throw new Error(result.error || 'Error procesando Nequi');
     }
-  };
+
+  } catch (error) {
+    console.error('Error en Nequi payment:', error);
+    handlePaymentError(error);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   // HANDLER: PSE
   const handlePSEPayment = async (pseData) => {
-    if (!validateStep(3)) return;
+  if (!validateStep(3)) return;
 
-    setIsProcessing(true);
+  setIsProcessing(true);
 
-    try {
-      const order = await createOrder();
+  try {
+    const order = await createOrder();
 
-      const result = await wompiService.processPSEPayment({
-        orderId: order.id,
-        amount: total,
-        customerData: getCustomerData(),
-        pseData: pseData,
-        shippingAddress: getShippingAddress()
-      });
+    const result = await wompiService.processPSEPayment({
+      orderId: order.id,
+      amount: Math.round(total * 100),
+      customerData: getCustomerData(),
+      pseData: pseData,
+      shippingAddress: getShippingAddress()
+    });
 
-      if (result.success) {
+    if (result.success) {
+      // IMPORTANTE: Si hay paymentUrl, redirigir SIEMPRE
+      if (result.paymentUrl) {
+        console.log('Redirigiendo a PSE:', result.paymentUrl);
+        localStorage.setItem('payment_reference', result.reference);
+        localStorage.setItem('payment_transaction_id', result.transactionId);
+        localStorage.setItem('order_id', order.id.toString());
+        window.location.href = result.paymentUrl;
+        return; // No continuar
+      }
+      
+      // Solo si NO hay URL y es APPROVED
+      if (result.status === 'APPROVED') {
+        clearCart();
         handlePaymentSuccess({ ...result, orderId: order.id });
       } else {
-        throw new Error(result.error || 'Error procesando PSE');
+        throw new Error('Esperando confirmación del pago');
       }
-
-    } catch (error) {
-      handlePaymentError(error);
-    } finally {
-      setIsProcessing(false);
+    } else {
+      throw new Error(result.error || 'Error procesando PSE');
     }
-  };
 
+  } catch (error) {
+    handlePaymentError(error);
+  } finally {
+    setIsProcessing(false);
+  }
+};
   // HANDLER: Bancolombia
   const handleBancolombiaPayment = async () => {
     if (!validateStep(3)) return;

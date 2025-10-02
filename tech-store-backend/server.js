@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { neon } from '@neondatabase/serverless';
+import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
 dotenv.config();
@@ -12,56 +12,44 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Configuración de Neon Database
-const sql = neon(process.env.DATABASE_URL);
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
-// IMPORTANTE: Configurar trust proxy para Vercel
 app.set('trust proxy', 1);
 
-// Middlewares de seguridad
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(compression());
 
-// CORS - Lista blanca de dominios permitidos
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:3000',
-  'http://localhost:3001'
-].filter(Boolean);
-
 app.use(cors({
-  origin: function(origin, callback) {
-    // Permitir requests sin origin (como mobile apps o curl)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'CORS policy no permite acceso desde este origen.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Length', 'X-JSON'],
-  maxAge: 86400
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Length', 'X-JSON']
 }));
 
-// Rate limiting para endpoints públicos
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  res.sendStatus(200);
+});
+
 const publicLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: 'Demasiadas peticiones desde esta IP, intenta nuevamente en 15 minutos',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Rate limiting MÁS ESTRICTO para Wompi
 const wompiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 20, // máximo 20 transacciones en 15 minutos
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: 'Límite de transacciones excedido, intenta en unos minutos',
   standardHeaders: true,
   legacyHeaders: false,
@@ -73,7 +61,6 @@ app.use('/api/wompi/create-transaction', wompiLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Headers para evitar caché en APIs
 app.use('/api', (req, res, next) => {
   res.set({
     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -89,16 +76,18 @@ app.use('/api', (req, res, next) => {
 
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await sql`
-      SELECT * FROM products 
-      WHERE is_active = true 
-      ORDER BY created_at DESC
-    `;
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
 
     res.json({
       success: true,
-      data: products,
-      count: products.length
+      data: products || [],
+      count: products?.length || 0
     });
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -114,12 +103,14 @@ app.get('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const products = await sql`
-      SELECT * FROM products 
-      WHERE id = ${id} AND is_active = true
-    `;
+    const { data: product, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .eq('is_active', true)
+      .single();
 
-    if (products.length === 0) {
+    if (error || !product) {
       return res.status(404).json({
         success: false,
         error: 'Producto no encontrado'
@@ -128,7 +119,7 @@ app.get('/api/products/:id', async (req, res) => {
 
     res.json({
       success: true,
-      data: products[0]
+      data: product
     });
   } catch (error) {
     console.error('Error fetching product:', error);
@@ -157,31 +148,46 @@ app.post('/api/products', async (req, res) => {
       });
     }
 
-    const products = await sql`
-      INSERT INTO products (
-        name, description, price, original_price, category, category_name,
-        subcategory, subcategory_name, brand, model, stock, stock_quantity,
-        image, images, is_active, is_featured, is_new, in_stock, discount,
-        rating, reviews, total_reviews, tags, warranty, shipping,
-        specifications, features, variants, created_at, updated_at
-      ) VALUES (
-        ${name}, ${description}, ${price}, ${original_price || null}, 
-        ${category}, ${category_name || category}, ${subcategory || category}, 
-        ${subcategory_name || category_name || category}, ${brand}, ${model || null},
-        ${stock || stock_quantity || 0}, ${stock_quantity || stock || 0},
-        ${image || null}, ${JSON.stringify(images || [])}, 
-        ${is_active !== false}, ${is_featured || false}, ${is_new || false}, 
-        ${in_stock !== false}, ${discount || 0}, ${rating || 4.5}, 
-        ${reviews || 0}, ${total_reviews || 0}, ${JSON.stringify(tags || [])},
-        ${warranty || '12 meses de garantía'}, ${shipping || 'Envío gratis en 24-48 horas'},
-        ${JSON.stringify(specifications || [])}, ${JSON.stringify(features || [])},
-        ${JSON.stringify(variants || [])}, NOW(), NOW()
-      ) RETURNING *
-    `;
+    const { data: product, error } = await supabase
+      .from('products')
+      .insert([{
+        name,
+        description,
+        price,
+        original_price: original_price || null,
+        category,
+        category_name: category_name || category,
+        subcategory: subcategory || category,
+        subcategory_name: subcategory_name || category_name || category,
+        brand,
+        model: model || null,
+        stock: stock || stock_quantity || 0,
+        stock_quantity: stock_quantity || stock || 0,
+        image: image || null,
+        images: images || [],
+        is_active: is_active !== false,
+        is_featured: is_featured || false,
+        is_new: is_new || false,
+        in_stock: in_stock !== false,
+        discount: discount || 0,
+        rating: rating || 4.5,
+        reviews: reviews || 0,
+        total_reviews: total_reviews || 0,
+        tags: tags || [],
+        warranty: warranty || '12 meses de garantía',
+        shipping: shipping || 'Envío gratis en 24-48 horas',
+        specifications: specifications || [],
+        features: features || [],
+        variants: variants || []
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
 
     res.status(201).json({
       success: true,
-      data: products[0],
+      data: product,
       message: 'Producto creado exitosamente'
     });
   } catch (error) {
@@ -197,50 +203,17 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      name, description, price, original_price, category, category_name,
-      subcategory, subcategory_name, brand, model, stock, stock_quantity,
-      image, images, is_active, is_featured, is_new, in_stock, discount,
-      rating, reviews, total_reviews, tags, warranty, shipping,
-      specifications, features, variants
-    } = req.body;
+    const updateData = { ...req.body, updated_at: new Date().toISOString() };
 
-    const products = await sql`
-      UPDATE products SET
-        name = ${name},
-        description = ${description},
-        price = ${price},
-        original_price = ${original_price || null},
-        category = ${category},
-        category_name = ${category_name || category},
-        subcategory = ${subcategory || category},
-        subcategory_name = ${subcategory_name || category_name || category},
-        brand = ${brand},
-        model = ${model || null},
-        stock = ${stock || stock_quantity || 0},
-        stock_quantity = ${stock_quantity || stock || 0},
-        image = ${image || null},
-        images = ${JSON.stringify(images || [])},
-        is_active = ${is_active !== false},
-        is_featured = ${is_featured || false},
-        is_new = ${is_new || false},
-        in_stock = ${in_stock !== false},
-        discount = ${discount || 0},
-        rating = ${rating || 4.5},
-        reviews = ${reviews || 0},
-        total_reviews = ${total_reviews || 0},
-        tags = ${JSON.stringify(tags || [])},
-        warranty = ${warranty || '12 meses de garantía'},
-        shipping = ${shipping || 'Envío gratis en 24-48 horas'},
-        specifications = ${JSON.stringify(specifications || [])},
-        features = ${JSON.stringify(features || [])},
-        variants = ${JSON.stringify(variants || [])},
-        updated_at = NOW()
-      WHERE id = ${id} AND is_active = true
-      RETURNING *
-    `;
+    const { data: product, error } = await supabase
+      .from('products')
+      .update(updateData)
+      .eq('id', id)
+      .eq('is_active', true)
+      .select()
+      .single();
 
-    if (products.length === 0) {
+    if (error || !product) {
       return res.status(404).json({
         success: false,
         error: 'Producto no encontrado'
@@ -249,7 +222,7 @@ app.put('/api/products/:id', async (req, res) => {
 
     res.json({
       success: true,
-      data: products[0],
+      data: product,
       message: 'Producto actualizado exitosamente'
     });
   } catch (error) {
@@ -266,14 +239,17 @@ app.delete('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const products = await sql`
-      UPDATE products 
-      SET is_active = false, updated_at = NOW()
-      WHERE id = ${id} AND is_active = true
-      RETURNING id, name
-    `;
+    const { data: product, error } = await supabase
+      .update({ 
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('is_active', true)
+      .select('id, name')
+      .single();
 
-    if (products.length === 0) {
+    if (error || !product) {
       return res.status(404).json({
         success: false,
         error: 'Producto no encontrado'
@@ -283,7 +259,7 @@ app.delete('/api/products/:id', async (req, res) => {
     res.json({
       success: true,
       message: 'Producto eliminado exitosamente',
-      data: products[0]
+      data: product
     });
   } catch (error) {
     console.error('Error deleting product:', error);
@@ -299,7 +275,6 @@ app.delete('/api/products/:id', async (req, res) => {
 // RUTAS DE WOMPI
 // =====================
 
-// Obtener token de aceptación de Wompi
 app.get('/api/wompi/acceptance-token', async (req, res) => {
   try {
     const response = await fetch('https://production.wompi.co/v1/merchants/' + process.env.WOMPI_PUBLIC_KEY);
@@ -323,7 +298,6 @@ app.get('/api/wompi/acceptance-token', async (req, res) => {
   }
 });
 
-// Crear transacción en Wompi
 app.post('/api/wompi/create-transaction', async (req, res) => {
   try {
     const {
@@ -338,7 +312,6 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       shippingAddress
     } = req.body;
 
-    // Validaciones
     if (!orderId || !amount || !customerEmail || !paymentMethod || !acceptanceToken || !reference) {
       return res.status(400).json({ 
         success: false,
@@ -347,12 +320,18 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       });
     }
 
-    // Generar firma de integridad
-    const amountInCents = Math.round(amount * 100);
+    const amountInCents = Math.round(amount);
+    if (amountInCents < 150000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Monto inválido',
+        message: 'El monto mínimo para transacciones es $1,500 COP'
+      });
+    }
+
     const integrityString = `${reference}${amountInCents}${currency}${process.env.WOMPI_INTEGRITY_SECRET}`;
     const integritySignature = crypto.createHash('sha256').update(integrityString).digest('hex');
 
-    // Preparar datos base de la transacción
     const transactionData = {
       amount_in_cents: amountInCents,
       currency: currency,
@@ -370,27 +349,37 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
       redirect_url: `${process.env.FRONTEND_URL}/payment-result?reference=${reference}`
     };
 
-    // Agregar dirección de envío
     if (shippingAddress && shippingAddress.address) {
-      transactionData.shipping_address = {
+      const addressData = {
         address_line_1: shippingAddress.address,
-        address_line_2: shippingAddress.addressDetails || '',
         city: shippingAddress.city,
         region: shippingAddress.state || shippingAddress.city,
         country: 'CO',
-        phone_number: shippingAddress.phone || customerData?.phone || '',
-        postal_code: shippingAddress.postalCode || ''
+        phone_number: shippingAddress.phone || customerData?.phone || ''
       };
+
+      if (shippingAddress.addressDetails && shippingAddress.addressDetails.trim().length >= 4) {
+        addressData.address_line_2 = shippingAddress.addressDetails.trim();
+      } else {
+        addressData.address_line_2 = 'N/A ';
+      }
+
+      if (shippingAddress.postalCode && shippingAddress.postalCode.trim().length >= 5) {
+        addressData.postal_code = shippingAddress.postalCode.trim().substring(0, 12);
+      } else {
+        addressData.postal_code = '00000';
+      }
+
+      transactionData.shipping_address = addressData;
     }
 
-    console.log('🔐 Creating Wompi transaction:', {
+    console.log('Creating Wompi transaction:', {
       reference,
       amount: amountInCents,
       method: paymentMethod.type,
       email: customerEmail
     });
 
-    // Crear transacción en Wompi
     const wompiResponse = await fetch(`${process.env.WOMPI_API_URL}/transactions`, {
       method: 'POST',
       headers: {
@@ -403,77 +392,157 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
     const wompiData = await wompiResponse.json();
 
     if (!wompiResponse.ok) {
-      console.error('❌ Wompi API error:', wompiData);
-      throw new Error(
-        wompiData.error?.reason || 
-        wompiData.error?.messages?.join(', ') || 
-        'Error creando transacción en Wompi'
-      );
+      console.error('Wompi API error completo:', JSON.stringify(wompiData, null, 2));
+      
+      let errorMessage = 'Error creando transacción en Wompi';
+      
+      if (wompiData.error) {
+        if (wompiData.error.reason) {
+          errorMessage = wompiData.error.reason;
+        } else if (wompiData.error.messages) {
+          errorMessage = Array.isArray(wompiData.error.messages) 
+            ? wompiData.error.messages.join(', ')
+            : JSON.stringify(wompiData.error.messages);
+        } else if (wompiData.error.message) {
+          errorMessage = wompiData.error.message;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    console.log('✅ Wompi transaction created:', wompiData.data.id);
+    console.log('Wompi transaction created:', wompiData.data.id);
 
-    // Guardar en base de datos usando Neon
+    // PARA PSE: Consultar la transacción para obtener la URL de pago
+    if (paymentMethod.type === 'PSE' && wompiData.data.status === 'PENDING') {
+      console.log('PSE PENDING - Consultando transacción para obtener URL...');
+      
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const txStatusResponse = await fetch(
+          `${process.env.WOMPI_API_URL}/transactions/${wompiData.data.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${process.env.WOMPI_PRIVATE_KEY}`
+            }
+          }
+        );
+        
+        const txStatus = await txStatusResponse.json();
+        console.log('Estado de transacción PSE:', JSON.stringify(txStatus, null, 2));
+        
+        if (txStatus.data) {
+          wompiData.data = { ...wompiData.data, ...txStatus.data };
+        }
+      } catch (error) {
+        console.error('Error consultando estado de transacción PSE:', error);
+      }
+    }
+
+    console.log('=== WOMPI RESPONSE DEBUG ===');
+    console.log('Full response:', JSON.stringify(wompiData, null, 2));
+    console.log('Status:', wompiData.data?.status);
+    console.log('Payment Method Type:', paymentMethod.type);
+    console.log('payment_link_url:', wompiData.data?.payment_link_url);
+    console.log('payment_method:', JSON.stringify(wompiData.data?.payment_method, null, 2));
+    console.log('===========================');
+
+    let paymentUrl = null;
+
+    if (paymentMethod.type === 'PSE') {
+      paymentUrl = wompiData.data.payment_link_url || 
+                   wompiData.data.payment_method?.extra?.async_payment_url ||
+                   wompiData.data.payment_method?.extra?.payment_url;
+      
+      console.log('PSE Payment URL extraída:', paymentUrl);
+      
+      if (!paymentUrl) {
+        console.error('❌ No se encontró payment URL en la respuesta de Wompi para PSE');
+        console.error('Estructura completa de data:', JSON.stringify(wompiData.data, null, 2));
+      }
+    } else if (paymentMethod.type === 'NEQUI') {
+      paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
+      
+      console.log('NEQUI Payment URL extraída:', paymentUrl);
+      
+      if (!paymentUrl) {
+        console.error('❌ No se encontró payment URL en la respuesta de Wompi para NEQUI');
+      }
+    } else if (paymentMethod.type === 'BANCOLOMBIA_TRANSFER') {
+      paymentUrl = wompiData.data.payment_method?.extra?.async_payment_url;
+      
+      console.log('BANCOLOMBIA Payment URL extraída:', paymentUrl);
+      
+      if (!paymentUrl) {
+        console.error('❌ No se encontró payment URL en la respuesta de Wompi para BANCOLOMBIA');
+      }
+    }
+
+    console.log('Payment URL extracted:', {
+      method: paymentMethod.type,
+      url: paymentUrl,
+      hasUrl: !!paymentUrl,
+      status: wompiData.data.status
+    });
+
+    if (paymentMethod.type === 'PSE' && !paymentUrl) {
+  console.error('CRITICAL ERROR: PSE requiere URL pero no fue encontrada');
+  throw new Error('No se pudo obtener la URL de pago del banco. Por favor intenta nuevamente.');
+}
+
+// Para Nequi/Bancolombia, la URL es opcional (push notification)
+if (!paymentUrl && ['NEQUI', 'BANCOLOMBIA_TRANSFER'].includes(paymentMethod.type)) {
+  console.log(`⚠️ ${paymentMethod.type} sin URL - usando notificación push`);
+}
+
     try {
-      await sql`
-        INSERT INTO transactions (
-          order_id,
-          user_id,
-          wompi_transaction_id,
-          wompi_reference,
-          amount,
-          currency,
-          status,
-          payment_method_type,
-          customer_email,
-          customer_data,
-          wompi_data,
-          created_at,
-          updated_at
-        ) VALUES (
-          ${orderId},
-          ${customerData?.userId || null},
-          ${wompiData.data.id},
-          ${reference},
-          ${amount},
-          ${currency},
-          ${wompiData.data.status},
-          ${paymentMethod.type},
-          ${customerEmail},
-          ${JSON.stringify(customerData)},
-          ${JSON.stringify(wompiData.data)},
-          NOW(),
-          NOW()
-        )
-      `;
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert([{
+          order_id: orderId,
+          user_id: customerData?.userId || null,
+          wompi_transaction_id: wompiData.data.id,
+          wompi_reference: reference,
+          amount: amountInCents / 100,
+          currency: currency,
+          status: wompiData.data.status,
+          payment_method_type: paymentMethod.type,
+          customer_email: customerEmail,
+          customer_data: customerData,
+          wompi_data: wompiData.data
+        }]);
 
-      // Actualizar estado del pedido
+      if (transactionError) throw transactionError;
+
       const orderStatus = wompiData.data.status === 'APPROVED' ? 'paid' : 'pending';
       
-      await sql`
-        UPDATE orders 
-        SET 
-          payment_status = ${orderStatus},
-          updated_at = NOW()
-        WHERE id = ${orderId}
-      `;
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          payment_status: orderStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
-      console.log('💾 Transaction saved to database');
+      if (orderError) throw orderError;
+
+      console.log('Transaction saved to database');
     } catch (dbError) {
-      console.error('⚠️ Error guardando en DB:', dbError);
-      // No fallar la transacción si el problema es solo la DB
+      console.error('Error guardando en DB:', dbError);
     }
 
     return res.status(200).json({
       success: true,
       transaction: wompiData.data,
       reference: reference,
-      paymentUrl: wompiData.data.payment_method?.extra?.async_payment_url || null,
+      transactionId: wompiData.data.id,
+      paymentUrl: paymentUrl,
       status: wompiData.data.status
     });
 
   } catch (error) {
-    console.error('❌ Error en create-transaction:', error);
+    console.error('Error en create-transaction:', error);
     return res.status(500).json({
       success: false,
       error: 'Error procesando pago',
@@ -482,7 +551,6 @@ app.post('/api/wompi/create-transaction', async (req, res) => {
   }
 });
 
-// Consultar estado de transacción
 app.get('/api/wompi/transaction-status/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -504,7 +572,7 @@ app.get('/api/wompi/transaction-status/:id', async (req, res) => {
 
     res.json({
       success: true,
-      transaction: data.data
+      ...data.data
     });
   } catch (error) {
     console.error('Error getting transaction status:', error);
@@ -515,19 +583,17 @@ app.get('/api/wompi/transaction-status/:id', async (req, res) => {
   }
 });
 
-// Webhook de Wompi
 app.post('/api/wompi/webhook', async (req, res) => {
   try {
     const signature = req.headers['x-event-signature'];
     const eventData = req.body;
 
-    console.log('📨 Webhook received:', {
+    console.log('Webhook received:', {
       event: eventData.event,
       transactionId: eventData.data?.transaction?.id,
       hasSignature: !!signature
     });
 
-    // Validar firma (OBLIGATORIO en producción)
     if (signature) {
       const bodyString = JSON.stringify(eventData);
       const expectedSignature = crypto
@@ -536,12 +602,12 @@ app.post('/api/wompi/webhook', async (req, res) => {
         .digest('hex');
       
       if (signature !== expectedSignature) {
-        console.error('❌ Invalid webhook signature');
+        console.error('Invalid webhook signature');
         return res.status(401).json({ error: 'Invalid signature' });
       }
-      console.log('✅ Webhook signature validated');
+      console.log('Webhook signature validated');
     } else {
-      console.warn('⚠️ Webhook sin firma - rechazado en producción');
+      console.warn('Webhook sin firma - rechazado en producción');
       return res.status(401).json({ error: 'Missing signature' });
     }
 
@@ -552,26 +618,26 @@ app.post('/api/wompi/webhook', async (req, res) => {
       return res.status(400).json({ error: 'No transaction data' });
     }
 
-    console.log('🔄 Processing webhook:', {
+    console.log('Processing webhook:', {
       event,
       transactionId: transaction.id,
       status: transaction.status,
       reference: transaction.reference
     });
 
-    // Actualizar transacción en DB
     try {
-      await sql`
-        UPDATE transactions 
-        SET 
-          status = ${transaction.status},
-          wompi_data = ${JSON.stringify(transaction)},
-          webhook_data = ${JSON.stringify(eventData)},
-          updated_at = NOW()
-        WHERE wompi_transaction_id = ${transaction.id}
-      `;
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .update({
+          status: transaction.status,
+          wompi_data: transaction,
+          webhook_data: eventData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('wompi_transaction_id', transaction.id);
 
-      // Mapear estados
+      if (transactionError) throw transactionError;
+
       const paymentStatus = {
         'APPROVED': 'paid',
         'DECLINED': 'failed',
@@ -585,21 +651,28 @@ app.post('/api/wompi/webhook', async (req, res) => {
         'VOIDED': 'cancelled'
       }[transaction.status] || 'pending';
 
-      // Actualizar pedido
-      await sql`
-        UPDATE orders o
-        SET 
-          status = ${orderStatus},
-          payment_status = ${paymentStatus},
-          updated_at = NOW()
-        FROM transactions t
-        WHERE t.order_id = o.id 
-          AND t.wompi_transaction_id = ${transaction.id}
-      `;
+      const { data: transactionData } = await supabase
+        .from('transactions')
+        .select('order_id')
+        .eq('wompi_transaction_id', transaction.id)
+        .single();
 
-      console.log('✅ Database updated successfully');
+      if (transactionData?.order_id) {
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({
+            status: orderStatus,
+            payment_status: paymentStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', transactionData.order_id);
+
+        if (orderError) throw orderError;
+      }
+
+      console.log('Database updated successfully');
     } catch (dbError) {
-      console.error('❌ Error updating database:', dbError);
+      console.error('Error updating database:', dbError);
     }
 
     return res.status(200).json({
@@ -608,7 +681,7 @@ app.post('/api/wompi/webhook', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error processing webhook:', error);
+    console.error('Error processing webhook:', error);
     return res.status(500).json({
       error: 'Error processing webhook',
       message: error.message
@@ -616,19 +689,21 @@ app.post('/api/wompi/webhook', async (req, res) => {
   }
 });
 
-// =====================
-// RUTA DE SALUD
-// =====================
 app.get('/api/health', async (req, res) => {
   try {
-    await sql`SELECT 1`;
+    const { data, error } = await supabase
+      .from('products')
+      .select('count')
+      .limit(1);
+    
+    if (error) throw error;
     
     res.json({
       success: true,
       message: 'TechStore API funcionando correctamente',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
-      database: 'Connected',
+      database: 'Supabase Connected',
       wompi: 'Configured'
     });
   } catch (error) {
@@ -642,7 +717,6 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Manejo de rutas no encontradas
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -651,7 +725,6 @@ app.use('*', (req, res) => {
   });
 });
 
-// Manejo global de errores
 app.use((error, req, res, next) => {
   console.error('Error no manejado:', error);
   res.status(500).json({
@@ -661,13 +734,12 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 API URL: http://localhost:${PORT}/api`);
-  console.log(`💾 Database: Neon PostgreSQL`);
-  console.log(`💳 Wompi: ${process.env.WOMPI_API_URL}`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`API URL: http://localhost:${PORT}/api`);
+  console.log(`Database: Supabase`);
+  console.log(`Wompi: ${process.env.WOMPI_API_URL}`);
 });
 
 export default app;

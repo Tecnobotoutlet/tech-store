@@ -25,15 +25,78 @@ const PaymentResult = ({
   const [emailSent, setEmailSent] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (propType && propPaymentData) {
-      setStatus(propType);
-      setPaymentData(propPaymentData);
-      if (propType === 'success') {
-        setTimeout(() => setEmailSent(true), 2000);
+
+  // AGREGAR ESTE CÓDIGO COMPLETO:
+useEffect(() => {
+  const checkURLParams = async () => {
+    // Verificar si venimos de una redirección de pago
+    const urlParams = new URLSearchParams(window.location.search);
+    const transactionId = urlParams.get('id');
+    const reference = urlParams.get('reference');
+    
+    // Si hay parámetros en URL, verificar el pago
+    if (transactionId || localStorage.getItem('payment_transaction_id')) {
+      const txId = transactionId || localStorage.getItem('payment_transaction_id');
+      const ref = reference || localStorage.getItem('payment_reference');
+      
+      console.log('Verificando pago:', { txId, ref });
+      
+      try {
+        // Esperar 2 segundos para que Wompi procese
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Consultar estado
+        const result = await wompiService.getTransactionStatus(txId);
+        
+        console.log('Estado de transacción:', result);
+        
+        // Mapear estado
+        const mappedStatus = {
+          'APPROVED': 'success',
+          'DECLINED': 'error',
+          'ERROR': 'error',
+          'PENDING': 'pending',
+          'VOIDED': 'error'
+        }[result.status] || 'error';
+        
+        setStatus(mappedStatus);
+        setPaymentData({
+          reference: ref,
+          transactionId: txId,
+          amount: result.amount_in_cents / 100,
+          status: result.status
+        });
+        
+        // Limpiar localStorage
+        localStorage.removeItem('payment_reference');
+        localStorage.removeItem('payment_transaction_id');
+        localStorage.removeItem('order_id');
+        
+      } catch (error) {
+        console.error('Error verificando pago:', error);
+        setStatus('error');
+        setPaymentData({ reference: ref });
       }
     }
-  }, [propType, propPaymentData]);
+  };
+  
+  checkURLParams();
+}, []); // Este useEffect solo se ejecuta una vez al montar
+
+  useEffect(() => {
+  // Solo usar props si NO hay parámetros en URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasURLParams = urlParams.get('id') || urlParams.get('reference') || 
+                       localStorage.getItem('payment_transaction_id');
+  
+  if (!hasURLParams && propType && propPaymentData) {
+    setStatus(propType);
+    setPaymentData(propPaymentData);
+    if (propType === 'success') {
+      setTimeout(() => setEmailSent(true), 2000);
+    }
+  }
+}, [propType, propPaymentData]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {

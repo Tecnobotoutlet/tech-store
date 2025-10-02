@@ -1,3 +1,5 @@
+// src/components/Cart.js - Versión Completa con Soporte de Variantes
+
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { X, Plus, Minus, ShoppingBag, ArrowLeft, Trash2, Heart } from 'lucide-react';
@@ -24,24 +26,23 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
     }).format(price);
   };
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (cartId, newQuantity) => {
     if (newQuantity >= 0) {
-      updateQuantity(productId, newQuantity);
+      updateQuantity(cartId, newQuantity);
     }
   };
 
   const handleCheckout = () => {
-  if (items.length === 0) {
-    alert('Tu carrito está vacío');
-    return;
-  }
-  
-  // Cerrar el carrito y navegar al checkout
-  onClose();
-  if (onCheckout) {
-    onCheckout();
-  }
-};
+    if (items.length === 0) {
+      alert('Tu carrito está vacío');
+      return;
+    }
+    
+    onClose();
+    if (onCheckout) {
+      onCheckout();
+    }
+  };
 
   const calculateSavings = () => {
     return items.reduce((savings, item) => {
@@ -107,7 +108,7 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
               {/* Items List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {items.map((item) => (
-                  <div key={item.id} className="bg-gray-50 rounded-lg p-4">
+                  <div key={item.cartId} className="bg-gray-50 rounded-lg p-4">
                     <div className="flex space-x-3">
                       {/* Product Image */}
                       <div className="w-16 h-16 bg-white rounded-lg overflow-hidden flex-shrink-0">
@@ -126,8 +127,36 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
                               {item.name}
                             </h4>
                             <p className="text-xs text-gray-500 mt-1">
-                              {item.category}
+                              {item.categoryName || item.category}
                             </p>
+                            
+                            {/* Mostrar variantes seleccionadas */}
+                            {item.selectedVariants && item.selectedVariants.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {item.selectedVariants.map((variant, idx) => (
+                                  <div key={idx} className="flex items-center space-x-1 bg-white px-2 py-1 rounded-md border border-gray-200">
+                                    {variant.type === 'color' ? (
+                                      <>
+                                        <div
+                                          className="w-3 h-3 rounded-full border border-gray-300"
+                                          style={{ backgroundColor: variant.value }}
+                                        />
+                                        <span className="text-xs text-gray-700">{variant.name}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="text-xs font-medium text-blue-600">
+                                          {variant.type === 'size' ? '📏' : 
+                                           variant.type === 'storage' ? '💾' : 
+                                           variant.type === 'ram' ? '🧠' : '•'}
+                                        </span>
+                                        <span className="text-xs text-gray-700">{variant.name}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           
                           {/* Action Buttons */}
@@ -146,7 +175,7 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
                               />
                             </button>
                             <button
-                              onClick={() => removeFromCart(item.id)}
+                              onClick={() => removeFromCart(item.cartId)}
                               className="p-1 hover:bg-white rounded transition-colors"
                               title="Eliminar del carrito"
                             >
@@ -171,7 +200,7 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
                         <div className="flex items-center justify-between mt-3">
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                              onClick={() => handleQuantityChange(item.cartId, item.quantity - 1)}
                               className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
                             >
                               <Minus className="w-3 h-3" />
@@ -180,7 +209,7 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                              onClick={() => handleQuantityChange(item.cartId, item.quantity + 1)}
                               className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
                             >
                               <Plus className="w-3 h-3" />
@@ -205,7 +234,7 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-green-700 font-medium">
-                        🎉 Total ahorrado:
+                        Total ahorrado:
                       </span>
                       <span className="text-green-700 font-bold">
                         {formatPrice(savings)}
@@ -267,7 +296,7 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
 
                 {/* Security Badge */}
                 <div className="text-center text-xs text-gray-500 pt-2">
-                  🔒 Compra 100% segura • Garantía de devolución
+                  Compra 100% segura - Garantía de devolución
                 </div>
               </div>
             </>

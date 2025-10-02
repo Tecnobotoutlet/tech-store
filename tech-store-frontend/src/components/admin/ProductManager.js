@@ -1,8 +1,9 @@
-// src/components/admin/ProductManager.js - Versión Completa con Categorías y Subcategorías
+// src/components/admin/ProductManager.js - Versión Completa con Sistema de Variantes
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
 import { categoryService } from '../../services/categoryService';
+import { getSpecificationTemplate, getVariantTypes } from '../../data/specificationTemplates';
 import {
   Plus,
   Search,
@@ -21,7 +22,8 @@ import {
   Filter,
   Download,
   PlusCircle,
-  MinusCircle
+  MinusCircle,
+  Info
 } from 'lucide-react';
 
 let isCreatingProduct = false;
@@ -39,7 +41,10 @@ const BRANDS = [
   'Nike',
   'Adidas',
   'IKEA',
-  'Centrum'
+  'Centrum',
+  'Zara',
+  'H&M',
+  'Levi\'s'
 ];
 
 const SPECIFICATION_TYPES = [
@@ -56,9 +61,7 @@ const SPECIFICATION_TYPES = [
   { type: "weight", label: "Peso" },
   { type: "graphics", label: "Gráficos" },
   { type: "ports", label: "Puertos" },
-  { type: "wireless", label: "Inalámbrico" },
-  { type: "color", label: "Color" },
-  { type: "warranty", label: "Garantía" },
+  { type: "size", label: "Talla/Tamaño" },
   { type: "other", label: "Otro" }
 ];
 
@@ -105,6 +108,7 @@ const CompleteProductModal = React.memo(({
   newSpecification,
   newFeature,
   newVariant,
+  selectedVariantType,
   newTag,
   categories,
   subcategories,
@@ -123,6 +127,7 @@ const CompleteProductModal = React.memo(({
   onAddFeature,
   onRemoveFeature,
   onVariantChange,
+  onVariantTypeChange,
   onAddVariant,
   onRemoveVariant,
   onTagChange,
@@ -175,44 +180,7 @@ const CompleteProductModal = React.memo(({
                       <span className="text-sm text-gray-500">Stock</span>
                       <p className="font-semibold">{selectedProduct?.stockQuantity || selectedProduct?.stock || 0} unidades</p>
                     </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Categoría</span>
-                      <p className="font-medium">{selectedProduct?.categoryName || selectedProduct?.category}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Subcategoría</span>
-                      <p className="font-medium">{selectedProduct?.subcategoryName || selectedProduct?.subcategory}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Marca</span>
-                      <p className="font-medium">{selectedProduct?.brand}</p>
-                    </div>
                   </div>
-                  
-                  {selectedProduct?.specifications && selectedProduct.specifications.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold mb-2">Especificaciones</h5>
-                      <div className="space-y-1">
-                        {selectedProduct.specifications.map((spec, index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span className="text-gray-600">{spec.label}:</span>
-                            <span className="font-medium">{spec.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedProduct?.features && selectedProduct.features.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold mb-2">Características</h5>
-                      <ul className="text-sm space-y-1">
-                        {selectedProduct.features.map((feature, index) => (
-                          <li key={index} className="text-gray-600">• {feature}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -314,12 +282,11 @@ const CompleteProductModal = React.memo(({
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="1800000"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Para mostrar descuentos</p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Stock *
+                      Stock Base *
                     </label>
                     <input
                       type="number"
@@ -412,11 +379,6 @@ const CompleteProductModal = React.memo(({
                     </select>
                     {formErrors.subcategory && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.subcategory}</p>
-                    )}
-                    {formData.category && subcategories.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        Esta categoría no tiene subcategorías. Créalas en el Gestor de Categorías.
-                      </p>
                     )}
                   </div>
 
@@ -589,78 +551,239 @@ const CompleteProductModal = React.memo(({
                 </div>
               </div>
 
-              {/* Variantes */}
+              {/* Variantes con Stock Individual */}
               <div className="bg-gray-50 p-6 rounded-lg">
-                <h4 className="text-lg font-semibold mb-4">Variantes de Color</h4>
+                <h4 className="text-lg font-semibold mb-4">Variantes con Stock Individual</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Define las variantes disponibles (tallas, colores, etc.) con stock individual para cada una.
+                </p>
                 
+                {/* Selector de tipo de variante */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Variante
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {getVariantTypes(formData.category).map((variantType) => (
+                      <button
+                        key={variantType.type}
+                        type="button"
+                        onClick={() => onVariantTypeChange(variantType.type)}
+                        className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                          selectedVariantType === variantType.type
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                            : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                        }`}
+                      >
+                        {variantType.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Variantes agregadas */}
                 {formData.variants.length > 0 && (
                   <div className="mb-4">
-                    <h5 className="font-medium mb-2">Variantes agregadas:</h5>
+                    <h5 className="font-medium mb-3">Variantes agregadas:</h5>
                     <div className="space-y-2">
                       {formData.variants.map((variant, index) => (
-                        <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
-                          <div className="flex items-center space-x-3">
-                            <div
-                              className="w-6 h-6 rounded-full border-2 border-gray-300"
-                              style={{ backgroundColor: variant.color }}
-                            />
-                            <span className="text-sm font-medium">{variant.name}</span>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              variant.available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                              {variant.available ? 'Disponible' : 'No disponible'}
-                            </span>
+                        <div key={variant.id || index} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
+                          <div className="flex items-center space-x-4 flex-1">
+                            {/* Visual del variant */}
+                            {variant.type === 'color' ? (
+                              <div
+                                className="w-10 h-10 rounded-lg border-2 border-gray-300 flex-shrink-0"
+                                style={{ backgroundColor: variant.value }}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg border-2 border-gray-300 flex items-center justify-center bg-gray-50 flex-shrink-0">
+                                <span className="text-xs font-bold text-gray-600">
+                                  {variant.value?.substring(0, 2).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Información */}
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium text-gray-900">{variant.name}</span>
+                                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                  {variant.type === 'color' ? 'Color' : 
+                                   variant.type === 'size' ? 'Talla' : 
+                                   variant.type}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                <span>Stock: <strong>{variant.stock}</strong></span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                  variant.available && variant.stock > 0
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {variant.available && variant.stock > 0 ? 'Disponible' : 'No disponible'}
+                                </span>
+                                {variant.sku && (
+                                  <span className="text-xs text-gray-500">SKU: {variant.sku}</span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Botón eliminar */}
+                            <button
+                              type="button"
+                              onClick={() => onRemoveVariant(index)}
+                              className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <MinusCircle className="w-5 h-5" />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => onRemoveVariant(index)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <MinusCircle className="w-4 h-4" />
-                          </button>
                         </div>
                       ))}
+                    </div>
+                    
+                    {/* Resumen de stock total */}
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-blue-800 font-medium">Stock total en variantes:</span>
+                        <span className="text-blue-900 font-bold text-lg">
+                          {formData.variants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0)} unidades
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <input
-                    type="text"
-                    value={newVariant.name}
-                    onChange={(e) => onVariantChange('name', e.target.value)}
-                    placeholder="Nombre del color"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                {/* Formulario para agregar nueva variante */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white">
+                  <h5 className="font-medium mb-3 text-gray-700">
+                    Agregar nueva {selectedVariantType === 'color' ? 'color' : selectedVariantType === 'size' ? 'talla' : 'variante'}
+                  </h5>
                   
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="color"
-                      value={newVariant.color}
-                      onChange={(e) => onVariantChange('color', e.target.value)}
-                      className="w-10 h-10 border border-gray-300 rounded cursor-pointer"
-                    />
-                    <span className="text-sm text-gray-600">{newVariant.color}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    {/* Nombre */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Nombre *
+                      </label>
+                      <input
+                        type="text"
+                        value={newVariant.name}
+                        onChange={(e) => onVariantChange('name', e.target.value)}
+                        placeholder={
+                          selectedVariantType === 'color' ? 'Ej: Negro' :
+                          selectedVariantType === 'size' ? 'Ej: M, 38' :
+                          'Ej: 256GB'
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      />
+                    </div>
+                    
+                    {/* Valor (color picker o texto) */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        {selectedVariantType === 'color' ? 'Color' : 'Valor'} *
+                      </label>
+                      {selectedVariantType === 'color' ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={newVariant.value}
+                            onChange={(e) => onVariantChange('value', e.target.value)}
+                            className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={newVariant.value}
+                            onChange={(e) => onVariantChange('value', e.target.value)}
+                            placeholder="#000000"
+                            className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-xs"
+                          />
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={newVariant.value}
+                          onChange={(e) => onVariantChange('value', e.target.value)}
+                          placeholder={
+                            selectedVariantType === 'size' ? 'M, 38, L' :
+                            '256GB, 8GB'
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      )}
+                    </div>
+                    
+                    {/* Stock */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Stock *
+                      </label>
+                      <input
+                        type="number"
+                        value={newVariant.stock}
+                        onChange={(e) => onVariantChange('stock', parseInt(e.target.value) || 0)}
+                        min="0"
+                        placeholder="10"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      />
+                    </div>
+                    
+                    {/* SKU (opcional) */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        SKU (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={newVariant.sku}
+                        onChange={(e) => onVariantChange('sku', e.target.value)}
+                        placeholder="Auto"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      />
+                    </div>
+                    
+                    {/* Botón agregar */}
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={onAddVariant}
+                        disabled={!newVariant.name.trim() || !newVariant.value}
+                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center text-sm font-medium"
+                      >
+                        <PlusCircle className="w-4 h-4 mr-1" />
+                        Agregar
+                      </button>
+                    </div>
                   </div>
                   
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={newVariant.available}
-                      onChange={(e) => onVariantChange('available', e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600"
-                    />
-                    <span className="text-sm">Disponible</span>
-                  </label>
-                  
-                  <button
-                    type="button"
-                    onClick={onAddVariant}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center"
-                  >
-                    <PlusCircle className="w-4 h-4 mr-1" />
-                    Agregar
-                  </button>
+                  {/* Checkbox disponible */}
+                  <div className="mt-3">
+                    <label className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={newVariant.available}
+                        onChange={(e) => onVariantChange('available', e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-700">Marcar como disponible</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Ayuda */}
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start space-x-2">
+                    <Info className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-amber-800">
+                      <p className="font-medium mb-1">Consejos:</p>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>Define el stock individual para cada variante</li>
+                        <li>El SKU se genera automáticamente si lo dejas vacío</li>
+                        <li>Una variante sin stock o marcada como no disponible no se podrá comprar</li>
+                        <li>Para productos de moda/calzado, usa el tipo "Talla" para tallas</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -795,11 +918,20 @@ const CompleteProductModal = React.memo(({
           {modalMode !== 'view' && (
             <button
               onClick={onSave}
-              disabled={isSaving}  // AGREGAR ESTO
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+              disabled={isSaving}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Guardar Producto
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Guardar Producto
+                </>
+              )}
             </button>
           )}
         </div>
@@ -809,12 +941,6 @@ const CompleteProductModal = React.memo(({
 });
 
 const ProductManager = () => {
-
-useEffect(() => {
-    console.log('🔷 ProductManager MONTADO', new Date().toISOString());
-    return () => console.log('🔶 ProductManager DESMONTADO', new Date().toISOString());
-  }, []);
-  
   const { 
     products: allProducts, 
     addProduct, 
@@ -843,7 +969,15 @@ useEffect(() => {
   // Estados para formularios dinámicos
   const [newSpecification, setNewSpecification] = useState({ type: '', label: '', value: '' });
   const [newFeature, setNewFeature] = useState('');
-  const [newVariant, setNewVariant] = useState({ name: '', color: '#000000', available: true });
+  const [selectedVariantType, setSelectedVariantType] = useState('color');
+  const [newVariant, setNewVariant] = useState({ 
+    type: 'color',
+    name: '', 
+    value: '#000000',
+    stock: 0,
+    sku: '',
+    available: true 
+  });
   const [newTag, setNewTag] = useState('');
 
   // Cargar categorías
@@ -920,7 +1054,15 @@ useEffect(() => {
     setSubcategories([]);
     setNewSpecification({ type: '', label: '', value: '' });
     setNewFeature('');
-    setNewVariant({ name: '', color: '#000000', available: true });
+    setSelectedVariantType('color');
+    setNewVariant({ 
+      type: 'color',
+      name: '', 
+      value: '#000000',
+      stock: 0,
+      sku: '',
+      available: true 
+    });
     setNewTag('');
     setShowModal(true);
   }, []);
@@ -934,7 +1076,7 @@ useEffect(() => {
     setModalMode('edit');
     setSelectedProduct(product);
     
-    // Cargar subcategorías si hay categoría
+    // Cargar subcategorías
     const categorySlug = product.category;
     if (categorySlug && categories[categorySlug]?.subcategories) {
       setSubcategories(Object.values(categories[categorySlug].subcategories));
@@ -1009,78 +1151,70 @@ useEffect(() => {
   }, [formData]);
 
   const handleSaveProduct = useCallback(async () => {
-  console.log('🔴 handleSaveProduct LLAMADO', {
-    isSaving,
-    modalMode,
-    timestamp: new Date().toISOString()
-  });
+    if (!validateForm()) return;
     
-  if (!validateForm()) return;
-  
-  // CRÍTICO: Prevenir múltiples ejecuciones
-  if (isSaving) {
-    console.log('Ya se está guardando, ignorando...');
-    return;
-  }
-
-  console.log('▶️ Iniciando guardado...');
-  setIsSaving(true);
-  isCreatingProduct = true;
-  
-  try {
-    const price = parseFloat(formData.price);
-    const originalPrice = formData.originalPrice ? parseFloat(formData.originalPrice) : null;
-    const discount = originalPrice && originalPrice > price ? 
-      Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
-
-    const productData = {
-      name: formData.name,
-      description: formData.description,
-      price: price,
-      originalPrice: originalPrice,
-      category_id: formData.categoryId,
-      subcategory_id: formData.subcategoryId,
-      category: formData.category,
-      categoryName: formData.categoryName,
-      subcategory: formData.subcategory,
-      subcategoryName: formData.subcategoryName,
-      brand: formData.brand,
-      model: formData.model,
-      stock: parseInt(formData.stockQuantity),
-      stockQuantity: parseInt(formData.stockQuantity),
-      image: formData.images[0] || formData.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=500&q=80',
-      images: formData.images.filter(img => img.trim() !== ''),
-      isActive: formData.isActive,
-      isFeatured: formData.isFeatured,
-      isNew: formData.isNew,
-      inStock: formData.inStock && parseInt(formData.stockQuantity) > 0,
-      discount: discount,
-      rating: parseFloat(formData.rating),
-      reviews: parseInt(formData.reviews) || 0,
-      totalReviews: parseInt(formData.totalReviews) || 0,
-      tags: formData.tags || [],
-      warranty: formData.warranty,
-      shipping: formData.shipping,
-      specifications: formData.specifications || [],
-      features: formData.features || [],
-      variants: formData.variants || []
-    };
-
-    if (modalMode === 'add') {
-      await addProduct(productData);
-    } else if (modalMode === 'edit') {
-      await updateProduct(selectedProduct.id, productData);
+    if (isSaving) {
+      console.log('Ya se está guardando, ignorando...');
+      return;
     }
 
-    setShowModal(false);
-  } catch (error) {
-    console.error('Error al guardar:', error);
-    alert('Error al guardar el producto');
-  } finally {
-    setIsSaving(false);
-    isCreatingProduct = false;
-  }
-}, [formData, modalMode, selectedProduct, validateForm, addProduct, updateProduct, isSaving]);
+    setIsSaving(true);
+    isCreatingProduct = true;
+    
+    try {
+      const price = parseFloat(formData.price);
+      const originalPrice = formData.originalPrice ? parseFloat(formData.originalPrice) : null;
+      const discount = originalPrice && originalPrice > price ? 
+        Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        price: price,
+        originalPrice: originalPrice,
+        category_id: formData.categoryId,
+        subcategory_id: formData.subcategoryId,
+        category: formData.category,
+        categoryName: formData.categoryName,
+        subcategory: formData.subcategory,
+        subcategoryName: formData.subcategoryName,
+        brand: formData.brand,
+        model: formData.model,
+        stock: parseInt(formData.stockQuantity),
+        stockQuantity: parseInt(formData.stockQuantity),
+        image: formData.images[0] || formData.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=500&q=80',
+        images: formData.images.filter(img => img.trim() !== ''),
+        isActive: formData.isActive,
+        isFeatured: formData.isFeatured,
+        isNew: formData.isNew,
+        inStock: formData.inStock && parseInt(formData.stockQuantity) > 0,
+        discount: discount,
+        rating: parseFloat(formData.rating),
+        reviews: parseInt(formData.reviews) || 0,
+        totalReviews: parseInt(formData.totalReviews) || 0,
+        tags: formData.tags || [],
+        warranty: formData.warranty,
+        shipping: formData.shipping,
+        specifications: formData.specifications || [],
+        features: formData.features || [],
+        variants: formData.variants || []
+      };
+
+      if (modalMode === 'add') {
+        await addProduct(productData);
+      } else if (modalMode === 'edit') {
+        await updateProduct(selectedProduct.id, productData);
+      }
+
+      setShowModal(false);
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      alert('Error al guardar el producto');
+    } finally {
+      setIsSaving(false);
+      isCreatingProduct = false;
+    }
+  }, [formData, modalMode, selectedProduct, validateForm, addProduct, updateProduct, isSaving]);
   
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -1122,6 +1256,20 @@ useEffect(() => {
       setSubcategories(Object.values(selectedCategory.subcategories));
     } else {
       setSubcategories([]);
+    }
+    
+    // Resetear tipo de variante según categoría
+    const variantTypes = getVariantTypes(categorySlug);
+    if (variantTypes.length > 0) {
+      setSelectedVariantType(variantTypes[0].type);
+      setNewVariant({
+        type: variantTypes[0].type,
+        name: '',
+        value: variantTypes[0].type === 'color' ? '#000000' : '',
+        stock: 0,
+        sku: '',
+        available: true
+      });
     }
     
     if (formErrors.category) {
@@ -1202,19 +1350,45 @@ useEffect(() => {
     }));
   }, []);
 
+  const handleVariantTypeChange = useCallback((type) => {
+    setSelectedVariantType(type);
+    setNewVariant({
+      type: type,
+      name: '',
+      value: type === 'color' ? '#000000' : '',
+      stock: 0,
+      sku: '',
+      available: true
+    });
+  }, []);
+
   const handleVariantChange = useCallback((field, value) => {
     setNewVariant(prev => ({ ...prev, [field]: value }));
   }, []);
 
   const handleAddVariant = useCallback(() => {
-    if (newVariant.name.trim()) {
+    if (newVariant.name.trim() && (newVariant.stock >= 0)) {
+      const variant = {
+        ...newVariant,
+        id: `var-${Date.now()}`,
+        sku: newVariant.sku || `${formData.name?.substring(0, 3).toUpperCase() || 'PROD'}-${newVariant.value}-${Date.now()}`
+      };
+      
       setFormData(prev => ({
         ...prev,
-        variants: [...prev.variants, { ...newVariant }]
+        variants: [...prev.variants, variant]
       }));
-      setNewVariant({ name: '', color: '#000000', available: true });
+      
+      setNewVariant({
+        type: selectedVariantType,
+        name: '',
+        value: selectedVariantType === 'color' ? '#000000' : '',
+        stock: 0,
+        sku: '',
+        available: true
+      });
     }
-  }, [newVariant]);
+  }, [newVariant, selectedVariantType, formData.name]);
 
   const handleRemoveVariant = useCallback((index) => {
     setFormData(prev => ({
@@ -1500,6 +1674,7 @@ useEffect(() => {
         newSpecification={newSpecification}
         newFeature={newFeature}
         newVariant={newVariant}
+        selectedVariantType={selectedVariantType}
         newTag={newTag}
         categories={categories}
         subcategories={subcategories}
@@ -1518,6 +1693,7 @@ useEffect(() => {
         onAddFeature={handleAddFeature}
         onRemoveFeature={handleRemoveFeature}
         onVariantChange={handleVariantChange}
+        onVariantTypeChange={handleVariantTypeChange}
         onAddVariant={handleAddVariant}
         onRemoveVariant={handleRemoveVariant}
         onTagChange={handleTagChange}
