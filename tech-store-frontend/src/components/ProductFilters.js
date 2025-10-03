@@ -341,7 +341,11 @@ const ProductFilters = ({
             {featuredCategories.map((category, index) => (
               <button
                 key={index}
-                onClick={() => onCategoryChange([category.name])}
+                onClick={() => {
+                  console.log('Categoría clickeada:', category.name);
+                  console.log('Productos actuales:', products.slice(0, 3));
+                    onCategoryChange([category.name]);
+                }}
                 className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 {category.icon} {category.name}
