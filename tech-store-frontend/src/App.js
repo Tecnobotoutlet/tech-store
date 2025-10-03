@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ProductProvider, useProducts } from './context/ProductContext';
+import { CategoryProvider } from './context/CategoryContext';
 import Header from './components/Header';
 import ProductCard from './components/ProductCard';
 import Cart from './components/Cart';
@@ -519,12 +520,14 @@ const handleCloseProfile = () => {
 function App() {
   return (
     <AuthProvider>
-      <ProductProvider>
-        <CartProvider>
-          <PWAHelper />
-          <AppContent />
-        </CartProvider>
-      </ProductProvider>
+      <CategoryProvider>
+        <ProductProvider>
+          <CartProvider>
+            <PWAHelper />
+            <AppContent />
+          </CartProvider>
+        </ProductProvider>
+      </CategoryProvider>
     </AuthProvider>
   );
 }
