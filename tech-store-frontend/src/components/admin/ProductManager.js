@@ -231,14 +231,19 @@ const CompleteProductModal = React.memo(({
                       name="price"
                       value={formData.price}
                       onChange={onInputChange}
+                      step="1"
+                      min="0"
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         formErrors.price ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="1500000"
+                      placeholder="200000"
                     />
                     {formErrors.price && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.price}</p>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Precio en pesos (sin centavos)
+                    </p>
                   </div>
 
                   <div>

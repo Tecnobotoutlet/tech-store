@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Filter, X, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { useCategories } from '../context/CategoryContext';
 
 const ProductFilters = ({ 
   products, 
@@ -23,8 +24,41 @@ const ProductFilters = ({
     max: priceRange.max
   });
 
-  // Obtener categorías únicas de los productos
-  const categories = [...new Set(products.map(product => product.category))];
+  // 🔥 OBTENER CATEGORÍAS DESDE SUPABASE
+  const { categories, loading: loadingCategories } = useCategories();
+
+  // Obtener lista de categorías para filtros
+  const categoryList = useMemo(() => {
+    const list = [];
+    Object.values(categories).forEach(category => {
+      // Agregar categoría principal
+      list.push({
+        name: category.name,
+        icon: category.icon,
+        type: 'main'
+      });
+      
+      // Agregar subcategorías si existen
+      if (category.subcategories) {
+        Object.values(category.subcategories).forEach(subcat => {
+          list.push({
+            name: subcat.name,
+            parent: category.name,
+            type: 'sub'
+          });
+        });
+      }
+    });
+    return list;
+  }, [categories]);
+
+  // Obtener categorías destacadas para filtros rápidos (las primeras 3)
+  const featuredCategories = useMemo(() => {
+    return Object.values(categories).slice(0, 3).map(cat => ({
+      name: cat.name,
+      icon: cat.icon
+    }));
+  }, [categories]);
   
   // Opciones de ordenamiento
   const sortOptions = [
@@ -175,25 +209,40 @@ const ProductFilters = ({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Categorías
+            {loadingCategories && (
+              <span className="text-xs text-gray-500 ml-2">(Cargando...)</span>
+            )}
           </label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {categories.map(category => (
-              <label key={category} className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedCategories.includes(category)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      onCategoryChange([...selectedCategories, category]);
-                    } else {
-                      onCategoryChange(selectedCategories.filter(c => c !== category));
-                    }
-                  }}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">{category}</span>
-              </label>
-            ))}
+            {categoryList.length === 0 && !loadingCategories ? (
+              <p className="text-sm text-gray-500">No hay categorías disponibles</p>
+            ) : (
+              categoryList.map((category, index) => (
+                <label 
+                  key={`${category.name}-${index}`} 
+                  className={`flex items-center space-x-2 cursor-pointer ${
+                    category.type === 'sub' ? 'ml-4' : ''
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCategories.includes(category.name)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        onCategoryChange([...selectedCategories, category.name]);
+                      } else {
+                        onCategoryChange(selectedCategories.filter(c => c !== category.name));
+                      }
+                    }}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    {category.icon && <span className="mr-1">{category.icon}</span>}
+                    {category.name}
+                  </span>
+                </label>
+              ))
+            )}
           </div>
         </div>
 
@@ -283,24 +332,21 @@ const ProductFilters = ({
           </label>
         </div>
 
-        {/* Quick Filters */}
+        {/* Quick Filters - DINÁMICOS */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Filtros Rápidos
           </label>
           <div className="space-y-2">
-            <button
-              onClick={() => onCategoryChange(['Gaming'])}
-              className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              🎮 Gaming
-            </button>
-            <button
-              onClick={() => onCategoryChange(['Smartphones'])}
-              className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              📱 Smartphones
-            </button>
+            {featuredCategories.map((category, index) => (
+              <button
+                key={index}
+                onClick={() => onCategoryChange([category.name])}
+                className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                {category.icon} {category.name}
+              </button>
+            ))}
             <button
               onClick={() => {
                 onPriceRangeChange({ min: 0, max: 1000000 });

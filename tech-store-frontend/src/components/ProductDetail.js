@@ -315,7 +315,8 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
                       
                       <div className="flex flex-wrap gap-3">
                         {variants.map((variant, index) => {
-                          const isSelected = selectedVariant?.id === variant.id || selectedVariant?.value === variant.value;
+                          const isSelected = selectedVariant?.id === variant.id || 
+                                           (selectedVariant?.name === variant.name && selectedVariant?.value === variant.value);
                           const isAvailable = variant.available && variant.stock > 0;
                           
                           return (
