@@ -1,7 +1,8 @@
-// src/components/Header.js - Versión Mejorada y Funcional
-import React, { useState, useRef, useEffect } from 'react';
+// src/components/Header.js - Versión con Categorías Dinámicas
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useCategories } from '../context/CategoryContext'; // 🔥 NUEVO
 
 const Header = ({ 
   onCartClick,
@@ -18,6 +19,7 @@ const Header = ({
 }) => {
   const cartContext = useCart();
   const authContext = useAuth();
+  const { categories, loading: loadingCategories } = useCategories(); // 🔥 NUEVO
   
   const cartItems = cartContext?.cartItems || cartContext?.items || [];
   const isAuthenticated = authContext?.isAuthenticated || false;
@@ -35,6 +37,19 @@ const Header = ({
   
   const userMenuRef = useRef(null);
   const categoriesMenuRef = useRef(null);
+
+  // 🔥 CATEGORÍAS DINÁMICAS DESDE SUPABASE
+  const mainCategories = useMemo(() => {
+    return Object.values(categories).map(category => ({
+      name: category.name,
+      icon: category.icon,
+      slug: category.slug,
+      subcategories: Object.values(category.subcategories || {}).map(sub => ({
+        name: sub.name,
+        slug: sub.slug
+      }))
+    }));
+  }, [categories]);
 
   // Cerrar menús al hacer click afuera
   useEffect(() => {
@@ -95,34 +110,24 @@ const Header = ({
   };
 
   const handleMyProfile = () => {
-  setShowUserMenu(false);
-  setShowMobileMenu(false);
-  if (onProfileClick) {
-    onProfileClick();
-  }
-};
+    setShowUserMenu(false);
+    setShowMobileMenu(false);
+    if (onProfileClick) {
+      onProfileClick();
+    }
+  };
 
   const handleMyOrders = () => {
-  setShowUserMenu(false);
-  setShowMobileMenu(false);
-  if (onProfileClick) {
-    onProfileClick(); // Abre el perfil y el usuario puede ir a la pestaña de pedidos
-  }
-};
+    setShowUserMenu(false);
+    setShowMobileMenu(false);
+    if (onProfileClick) {
+      onProfileClick();
+    }
+  };
 
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
-
-  // Categorías principales
-  const mainCategories = [
-    { name: 'Tecnología', subcategories: ['Smartphones', 'Laptops', 'Tablets', 'Gaming', 'Audio'] },
-    { name: 'Hogar', subcategories: ['Electrodomésticos', 'Muebles', 'Decoración', 'Cocina'] },
-    { name: 'Deportes', subcategories: ['Fitness', 'Fútbol', 'Basketball', 'Ciclismo', 'Natación'] },
-    { name: 'Moda', subcategories: ['Hombre', 'Mujer', 'Niños', 'Zapatos', 'Accesorios'] },
-    { name: 'Libros', subcategories: ['Ficción', 'No Ficción', 'Educativos', 'Comics'] },
-    { name: 'Salud', subcategories: ['Vitaminas', 'Belleza', 'Cuidado Personal', 'Equipos'] }
-  ];
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-40">
@@ -484,7 +489,7 @@ const Header = ({
         {/* Barra de Navegación Funcional */}
         <nav className="border-t border-gray-100 py-3 hidden md:block">
           <div className="flex items-center justify-center space-x-8">
-            {/* Categorías con dropdown */}
+            {/* Categorías con dropdown DINÁMICO */}
             <div className="relative" ref={categoriesMenuRef}>
               <button 
                 onClick={() => setShowCategoriesMenu(!showCategoriesMenu)}
@@ -499,39 +504,58 @@ const Header = ({
                 </svg>
               </button>
 
-              {/* Dropdown de categorías */}
+              {/* Dropdown de categorías DINÁMICO */}
               {showCategoriesMenu && (
                 <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-4 z-50">
-                  <div className="grid grid-cols-2 gap-4 px-4">
-                    {mainCategories.map((category, index) => (
-                      <div key={index} className="space-y-2">
-                        <button
-                          onClick={() => {
-                            onCategoryClick && onCategoryClick(category.name);
-                            setShowCategoriesMenu(false);
-                          }}
-                          className="font-semibold text-gray-800 hover:text-blue-600 transition-colors text-left"
-                        >
-                          {category.name}
-                        </button>
-                        <ul className="space-y-1">
-                          {category.subcategories.map((sub, subIndex) => (
-                            <li key={subIndex}>
-                              <button
-                                onClick={() => {
-                                  onCategoryClick && onCategoryClick(sub);
-                                  setShowCategoriesMenu(false);
-                                }}
-                                className="text-sm text-gray-600 hover:text-blue-600 transition-colors text-left"
-                              >
-                                {sub}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
+                  {loadingCategories ? (
+                    <div className="px-4 py-8 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-sm text-gray-500 mt-2">Cargando categorías...</p>
+                    </div>
+                  ) : mainCategories.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-gray-500">
+                      No hay categorías disponibles
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4 px-4">
+                      {mainCategories.map((category, index) => (
+                        <div key={index} className="space-y-2">
+                          <button
+                            onClick={() => {
+                              onCategoryClick && onCategoryClick(category.name);
+                              setShowCategoriesMenu(false);
+                            }}
+                            className="font-semibold text-gray-800 hover:text-blue-600 transition-colors text-left flex items-center space-x-1"
+                          >
+                            {category.icon && <span>{category.icon}</span>}
+                            <span>{category.name}</span>
+                          </button>
+                          {category.subcategories && category.subcategories.length > 0 && (
+                            <ul className="space-y-1">
+                              {category.subcategories.slice(0, 4).map((sub, subIndex) => (
+                                <li key={subIndex}>
+                                  <button
+                                    onClick={() => {
+                                      onCategoryClick && onCategoryClick(sub.name);
+                                      setShowCategoriesMenu(false);
+                                    }}
+                                    className="text-sm text-gray-600 hover:text-blue-600 transition-colors text-left"
+                                  >
+                                    {sub.name}
+                                  </button>
+                                </li>
+                              ))}
+                              {category.subcategories.length > 4 && (
+                                <li className="text-xs text-gray-400">
+                                  +{category.subcategories.length - 4} más
+                                </li>
+                              )}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
