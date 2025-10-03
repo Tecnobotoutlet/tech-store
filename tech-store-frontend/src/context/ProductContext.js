@@ -1,4 +1,4 @@
-// src/context/ProductContext.js - Versión actualizada con category_id y subcategory_id
+// src/context/ProductContext.js - VERSIÓN FINAL SIN CAMPOS INEXISTENTES
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -27,10 +27,11 @@ export const ProductProvider = ({ children }) => {
       originalPrice: product.original_price ? parseFloat(product.original_price) : null,
       category: product.category,
       categoryName: product.category_name || product.category,
-      categoryId: product.category_id, // 🔥 NUEVO
-      subcategory: product.subcategory || null,
-      subcategoryName: product.subcategory_name || product.subcategory || null,
-      subcategoryId: product.subcategory_id, // 🔥 NUEVO
+      categoryId: product.category_id,
+      subcategoryId: product.subcategory_id,
+      // Los campos subcategory y subcategoryName no existen en BD, los dejamos null o los derivamos
+      subcategory: null,
+      subcategoryName: null,
       brand: product.brand,
       model: product.model,
       stock: product.stock_quantity,
@@ -87,7 +88,7 @@ export const ProductProvider = ({ children }) => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // 🔥 AGREGAR PRODUCTO - ACTUALIZADO
+  // AGREGAR PRODUCTO - SIN CAMPOS INEXISTENTES
   const addProduct = useCallback(async (productData) => {
     console.log('🔵 addProduct INICIADO', {
       timestamp: new Date().toISOString(),
@@ -99,22 +100,23 @@ export const ProductProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
+      // SOLO CAMPOS QUE EXISTEN EN LA TABLA
       const dbData = {
-  name: productData.name,
-  description: productData.description,
-  price: parseFloat(productData.price),
-  original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
-  
-  // Campos de categoría (texto + ID)
-  category: productData.category || productData.categoryName?.toLowerCase().replace(/\s+/g, '-'),
-  category_name: productData.categoryName,
-  category_id: productData.categoryId ? parseInt(productData.categoryId) : null,
-  
-  // 🔥 SOLO EL ID DE SUBCATEGORÍA (sin campos de texto)
-  subcategory_id: productData.subcategoryId ? parseInt(productData.subcategoryId) : null,
-  
-  brand: productData.brand,
-  model: productData.model || null,
+        name: productData.name,
+        description: productData.description,
+        price: parseFloat(productData.price),
+        original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
+        
+        // Campos de categoría
+        category: productData.category || productData.categoryName?.toLowerCase().replace(/\s+/g, '-'),
+        category_name: productData.categoryName,
+        category_id: productData.categoryId ? parseInt(productData.categoryId) : null,
+        
+        // SOLO EL ID DE SUBCATEGORÍA (sin subcategory ni subcategory_name)
+        subcategory_id: productData.subcategoryId ? parseInt(productData.subcategoryId) : null,
+        
+        brand: productData.brand,
+        model: productData.model || null,
         stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
         image: productData.images?.[0] || productData.image || null,
         images: productData.images || [],
@@ -148,7 +150,10 @@ export const ProductProvider = ({ children }) => {
         subcategoryId: data?.subcategory_id
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error de Supabase:', error);
+        throw error;
+      }
 
       const newProduct = normalizeProduct(data);
       setProducts(prev => {
@@ -175,25 +180,24 @@ export const ProductProvider = ({ children }) => {
     }
   }, [normalizeProduct]);
 
-  // 🔥 ACTUALIZAR PRODUCTO - ACTUALIZADO
+  // ACTUALIZAR PRODUCTO - SIN CAMPOS INEXISTENTES
   const updateProduct = useCallback(async (productId, productData) => {
     setLoading(true);
     setError(null);
     try {
+      // SOLO CAMPOS QUE EXISTEN EN LA TABLA
       const dbData = {
         name: productData.name,
         description: productData.description,
         price: parseFloat(productData.price),
         original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
         
-        // 🔥 CAMPOS DE CATEGORÍA ACTUALIZADOS
+        // Campos de categoría
         category: productData.category || productData.categoryName?.toLowerCase().replace(/\s+/g, '-'),
         category_name: productData.categoryName,
         category_id: productData.categoryId ? parseInt(productData.categoryId) : null,
         
-        // 🔥 CAMPOS DE SUBCATEGORÍA ACTUALIZADOS
-        subcategory: productData.subcategory || productData.subcategoryName?.toLowerCase().replace(/\s+/g, '-'),
-        subcategory_name: productData.subcategoryName || null,
+        // SOLO EL ID DE SUBCATEGORÍA (sin subcategory ni subcategory_name)
         subcategory_id: productData.subcategoryId ? parseInt(productData.subcategoryId) : null,
         
         brand: productData.brand,
@@ -217,6 +221,8 @@ export const ProductProvider = ({ children }) => {
         updated_at: new Date().toISOString()
       };
 
+      console.log('🔵 Actualizando producto:', productId, dbData);
+
       const { data, error } = await supabase
         .from('products')
         .update(dbData)
@@ -224,11 +230,15 @@ export const ProductProvider = ({ children }) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error de Supabase al actualizar:', error);
+        throw error;
+      }
 
       const updatedProduct = normalizeProduct(data);
       setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
 
+      console.log('✅ Producto actualizado correctamente');
       return updatedProduct;
     } catch (error) {
       console.error('Error updating product:', error);
