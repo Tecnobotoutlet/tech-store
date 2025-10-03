@@ -1,4 +1,4 @@
-// src/context/ProductContext.js - Con subcategorías mapeadas
+// src/context/ProductContext.js - Versión actualizada con category_id y subcategory_id
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -27,8 +27,10 @@ export const ProductProvider = ({ children }) => {
       originalPrice: product.original_price ? parseFloat(product.original_price) : null,
       category: product.category,
       categoryName: product.category_name || product.category,
-      subcategory: product.subcategory || null, // 🔥 NUEVO
-      subcategoryName: product.subcategory_name || product.subcategory || null, // 🔥 NUEVO
+      categoryId: product.category_id, // 🔥 NUEVO
+      subcategory: product.subcategory || null,
+      subcategoryName: product.subcategory_name || product.subcategory || null,
+      subcategoryId: product.subcategory_id, // 🔥 NUEVO
       brand: product.brand,
       model: product.model,
       stock: product.stock_quantity,
@@ -85,11 +87,13 @@ export const ProductProvider = ({ children }) => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Agregar producto
+  // 🔥 AGREGAR PRODUCTO - ACTUALIZADO
   const addProduct = useCallback(async (productData) => {
     console.log('🔵 addProduct INICIADO', {
       timestamp: new Date().toISOString(),
-      productName: productData.name
+      productName: productData.name,
+      categoryId: productData.categoryId,
+      subcategoryId: productData.subcategoryId
     });
     
     setLoading(true);
@@ -100,10 +104,17 @@ export const ProductProvider = ({ children }) => {
         description: productData.description,
         price: parseFloat(productData.price),
         original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
-        category: productData.category,
-        category_name: productData.categoryName || productData.category,
-        subcategory: productData.subcategory || null, // 🔥 NUEVO
-        subcategory_name: productData.subcategoryName || productData.subcategory || null, // 🔥 NUEVO
+        
+        // 🔥 CAMPOS DE CATEGORÍA ACTUALIZADOS
+        category: productData.category || productData.categoryName?.toLowerCase().replace(/\s+/g, '-'),
+        category_name: productData.categoryName,
+        category_id: productData.categoryId ? parseInt(productData.categoryId) : null,
+        
+        // 🔥 CAMPOS DE SUBCATEGORÍA ACTUALIZADOS
+        subcategory: productData.subcategory || productData.subcategoryName?.toLowerCase().replace(/\s+/g, '-'),
+        subcategory_name: productData.subcategoryName || null,
+        subcategory_id: productData.subcategoryId ? parseInt(productData.subcategoryId) : null,
+        
         brand: productData.brand,
         model: productData.model || null,
         stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
@@ -124,11 +135,20 @@ export const ProductProvider = ({ children }) => {
         variants: productData.variants || []
       };
 
+      console.log('🟡 Datos a enviar a Supabase:', dbData);
+
       const { data, error } = await supabase
         .from('products')
         .insert([dbData])
         .select()
         .single();
+
+      console.log('🟢 Supabase INSERT completado', { 
+        success: !error, 
+        productId: data?.id,
+        categoryId: data?.category_id,
+        subcategoryId: data?.subcategory_id
+      });
 
       if (error) throw error;
 
@@ -141,6 +161,12 @@ export const ProductProvider = ({ children }) => {
         return [newProduct, ...prev];
       });
 
+      console.log('✅ addProduct COMPLETADO', { 
+        productId: newProduct.id,
+        categoryId: newProduct.categoryId,
+        subcategoryId: newProduct.subcategoryId
+      });
+      
       return newProduct;
     } catch (error) {
       console.error('❌ Error adding product:', error);
@@ -151,7 +177,7 @@ export const ProductProvider = ({ children }) => {
     }
   }, [normalizeProduct]);
 
-  // Actualizar producto
+  // 🔥 ACTUALIZAR PRODUCTO - ACTUALIZADO
   const updateProduct = useCallback(async (productId, productData) => {
     setLoading(true);
     setError(null);
@@ -161,10 +187,17 @@ export const ProductProvider = ({ children }) => {
         description: productData.description,
         price: parseFloat(productData.price),
         original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
-        category: productData.category,
-        category_name: productData.categoryName || productData.category,
-        subcategory: productData.subcategory || null, // 🔥 NUEVO
-        subcategory_name: productData.subcategoryName || productData.subcategory || null, // 🔥 NUEVO
+        
+        // 🔥 CAMPOS DE CATEGORÍA ACTUALIZADOS
+        category: productData.category || productData.categoryName?.toLowerCase().replace(/\s+/g, '-'),
+        category_name: productData.categoryName,
+        category_id: productData.categoryId ? parseInt(productData.categoryId) : null,
+        
+        // 🔥 CAMPOS DE SUBCATEGORÍA ACTUALIZADOS
+        subcategory: productData.subcategory || productData.subcategoryName?.toLowerCase().replace(/\s+/g, '-'),
+        subcategory_name: productData.subcategoryName || null,
+        subcategory_id: productData.subcategoryId ? parseInt(productData.subcategoryId) : null,
+        
         brand: productData.brand,
         model: productData.model || null,
         stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
@@ -243,9 +276,9 @@ export const ProductProvider = ({ children }) => {
   const getProductsByCategory = useCallback((categoryId, subcategoryId = null) => {
     return products.filter(product => {
       if (subcategoryId) {
-        return product.category === categoryId && product.subcategory === subcategoryId;
+        return product.categoryId === categoryId && product.subcategoryId === subcategoryId;
       }
-      return product.category === categoryId;
+      return product.categoryId === categoryId;
     });
   }, [products]);
 
