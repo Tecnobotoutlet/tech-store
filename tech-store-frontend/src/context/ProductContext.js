@@ -1,9 +1,8 @@
-// src/context/ProductContext.js - Solo Supabase
+// src/context/ProductContext.js - Con subcategorías mapeadas
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 
 const ProductContext = createContext();
-
 
 export const useProducts = () => {
   const context = useContext(ProductContext);
@@ -28,6 +27,8 @@ export const ProductProvider = ({ children }) => {
       originalPrice: product.original_price ? parseFloat(product.original_price) : null,
       category: product.category,
       categoryName: product.category_name || product.category,
+      subcategory: product.subcategory || null, // 🔥 NUEVO
+      subcategoryName: product.subcategory_name || product.subcategory || null, // 🔥 NUEVO
       brand: product.brand,
       model: product.model,
       stock: product.stock_quantity,
@@ -55,9 +56,9 @@ export const ProductProvider = ({ children }) => {
 
   // Cargar productos desde Supabase
   const fetchProducts = useCallback(async () => {
-  console.log('📥 fetchProducts LLAMADO', new Date().toISOString());
-  setLoading(true);
-  setError(null);
+    console.log('📥 fetchProducts LLAMADO', new Date().toISOString());
+    setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('products')
@@ -86,95 +87,70 @@ export const ProductProvider = ({ children }) => {
 
   // Agregar producto
   const addProduct = useCallback(async (productData) => {
-  console.log('🔵 addProduct INICIADO', {
-    timestamp: new Date().toISOString(),
-    productName: productData.name,
-    stackTrace: new Error().stack
-  });
-  
-  setLoading(true);
-  setError(null);
-  try {
-    const dbData = {
-      name: productData.name,
-      description: productData.description,
-      price: parseFloat(productData.price),
-      original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
-      category: productData.category,
-      category_name: productData.categoryName || productData.category,
-      brand: productData.brand,
-      model: productData.model || null,
-      stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
-      image: productData.images?.[0] || productData.image || null,
-      images: productData.images || [],
-      is_active: productData.isActive !== false,
-      is_featured: productData.isFeatured || false,
-      is_new: productData.isNew || false,
-      is_from_admin: true,
-      discount: productData.discount || 0,
-      rating: parseFloat(productData.rating || 4.5),
-      reviews: parseInt(productData.reviews || 0),
-      tags: productData.tags || [],
-      warranty: productData.warranty || '12 meses de garantía',
-      shipping: productData.shipping || 'Envío gratis en 24-48 horas',
-      specifications: productData.specifications || [],
-      features: productData.features || [],
-      variants: productData.variants || []
-    };
-
-    console.log('🟡 Llamando a Supabase INSERT', { productName: productData.name });
-
-    const { data, error } = await supabase
-      .from('products')
-      .insert([dbData])
-      .select()
-      .single();
-
-    console.log('🟢 Supabase INSERT completado', { 
-      success: !error, 
-      productId: data?.id,
-      productName: data?.name 
+    console.log('🔵 addProduct INICIADO', {
+      timestamp: new Date().toISOString(),
+      productName: productData.name
     });
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const dbData = {
+        name: productData.name,
+        description: productData.description,
+        price: parseFloat(productData.price),
+        original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
+        category: productData.category,
+        category_name: productData.categoryName || productData.category,
+        subcategory: productData.subcategory || null, // 🔥 NUEVO
+        subcategory_name: productData.subcategoryName || productData.subcategory || null, // 🔥 NUEVO
+        brand: productData.brand,
+        model: productData.model || null,
+        stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
+        image: productData.images?.[0] || productData.image || null,
+        images: productData.images || [],
+        is_active: productData.isActive !== false,
+        is_featured: productData.isFeatured || false,
+        is_new: productData.isNew || false,
+        is_from_admin: true,
+        discount: productData.discount || 0,
+        rating: parseFloat(productData.rating || 4.5),
+        reviews: parseInt(productData.reviews || 0),
+        tags: productData.tags || [],
+        warranty: productData.warranty || '12 meses de garantía',
+        shipping: productData.shipping || 'Envío gratis en 24-48 horas',
+        specifications: productData.specifications || [],
+        features: productData.features || [],
+        variants: productData.variants || []
+      };
 
-    if (error) throw error;
+      const { data, error } = await supabase
+        .from('products')
+        .insert([dbData])
+        .select()
+        .single();
 
-    const newProduct = normalizeProduct(data);
+      if (error) throw error;
 
-console.log('📊 Antes de setProducts:', {
-  productosActuales: products.length,
-  nuevoProductoId: newProduct.id
-});
+      const newProduct = normalizeProduct(data);
+      setProducts(prev => {
+        const yaExiste = prev.find(p => p.id === newProduct.id);
+        if (yaExiste) {
+          return prev;
+        }
+        return [newProduct, ...prev];
+      });
 
-setProducts(prev => {
-  console.log('🔄 setProducts ejecutándose:', {
-    prevLength: prev.length,
-    nuevoProductoId: newProduct.id
-  });
-  
-  // Verificar si ya existe
-  const yaExiste = prev.find(p => p.id === newProduct.id);
-  if (yaExiste) {
-    console.warn('⚠️ PRODUCTO YA EXISTE EN EL ESTADO');
-    return prev; // No agregarlo de nuevo
-  }
-  
-  const newState = [newProduct, ...prev];
-  console.log('✨ Nuevo estado creado:', {
-    nuevoLength: newState.length
-  });
-  return newState;
-});
+      return newProduct;
+    } catch (error) {
+      console.error('❌ Error adding product:', error);
+      setError('Error al agregar producto');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [normalizeProduct]);
 
-console.log('✅ addProduct COMPLETADO', { productId: newProduct.id });
-return newProduct;
-  } catch (error) {
-    console.error('❌ Error adding product:', error);
-    setError('Error al agregar producto');
-    throw error;
-  } finally {
-    setLoading(false);
-  }
-}, [normalizeProduct]);
   // Actualizar producto
   const updateProduct = useCallback(async (productId, productData) => {
     setLoading(true);
@@ -187,6 +163,8 @@ return newProduct;
         original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
         category: productData.category,
         category_name: productData.categoryName || productData.category,
+        subcategory: productData.subcategory || null, // 🔥 NUEVO
+        subcategory_name: productData.subcategoryName || productData.subcategory || null, // 🔥 NUEVO
         brand: productData.brand,
         model: productData.model || null,
         stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
