@@ -100,23 +100,21 @@ export const ProductProvider = ({ children }) => {
     setError(null);
     try {
       const dbData = {
-        name: productData.name,
-        description: productData.description,
-        price: parseFloat(productData.price),
-        original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
-        
-        // 🔥 CAMPOS DE CATEGORÍA ACTUALIZADOS
-        category: productData.category || productData.categoryName?.toLowerCase().replace(/\s+/g, '-'),
-        category_name: productData.categoryName,
-        category_id: productData.categoryId ? parseInt(productData.categoryId) : null,
-        
-        // 🔥 CAMPOS DE SUBCATEGORÍA ACTUALIZADOS
-        subcategory: productData.subcategory || productData.subcategoryName?.toLowerCase().replace(/\s+/g, '-'),
-        subcategory_name: productData.subcategoryName || null,
-        subcategory_id: productData.subcategoryId ? parseInt(productData.subcategoryId) : null,
-        
-        brand: productData.brand,
-        model: productData.model || null,
+  name: productData.name,
+  description: productData.description,
+  price: parseFloat(productData.price),
+  original_price: productData.originalPrice ? parseFloat(productData.originalPrice) : null,
+  
+  // Campos de categoría (texto + ID)
+  category: productData.category || productData.categoryName?.toLowerCase().replace(/\s+/g, '-'),
+  category_name: productData.categoryName,
+  category_id: productData.categoryId ? parseInt(productData.categoryId) : null,
+  
+  // 🔥 SOLO EL ID DE SUBCATEGORÍA (sin campos de texto)
+  subcategory_id: productData.subcategoryId ? parseInt(productData.subcategoryId) : null,
+  
+  brand: productData.brand,
+  model: productData.model || null,
         stock_quantity: parseInt(productData.stockQuantity || productData.stock || 0),
         image: productData.images?.[0] || productData.image || null,
         images: productData.images || [],
