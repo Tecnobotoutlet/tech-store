@@ -303,60 +303,60 @@ const CompleteProductModal = React.memo(({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Categoría Principal *
-                    </label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={onCategoryChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.category ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Seleccionar categoría</option>
-                      {Object.values(categories).map(category => (
-                        <option key={category.slug} value={category.slug}>
-                          {category.icon} {category.name}
-                        </option>
-                      ))}
-                    </select>
-                    {formErrors.category && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.category}</p>
-                    )}
-                  </div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Categoría Principal *
+  </label>
+  <select
+    name="categoryId"  // 🔥 CAMBIO
+    value={formData.categoryId || ''}  // 🔥 CAMBIO
+    onChange={onCategoryChange}
+    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+      formErrors.category ? 'border-red-500' : 'border-gray-300'
+    }`}
+  >
+    <option value="">Seleccionar categoría</option>
+    {Object.values(categories).map(category => (
+      <option key={category.dbId} value={category.dbId}>  {/* 🔥 CAMBIO */}
+        {category.icon} {category.name}
+      </option>
+    ))}
+  </select>
+  {formErrors.category && (
+    <p className="text-red-500 text-sm mt-1">{formErrors.category}</p>
+  )}
+</div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subcategoría *
-                    </label>
-                    <select
-                      name="subcategory"
-                      value={formData.subcategory}
-                      onChange={onSubcategoryChange}
-                      disabled={!formData.category || subcategories.length === 0}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.subcategory ? 'border-red-500' : 'border-gray-300'
-                      } ${!formData.category ? 'bg-gray-100' : ''}`}
-                    >
-                      <option value="">
-                        {!formData.category 
-                          ? 'Primero selecciona una categoría' 
-                          : subcategories.length === 0
-                          ? 'Esta categoría no tiene subcategorías'
-                          : 'Seleccionar subcategoría'
-                        }
-                      </option>
-                      {subcategories.map(subcategory => (
-                        <option key={subcategory.slug} value={subcategory.slug}>
-                          {subcategory.name}
-                        </option>
-                      ))}
-                    </select>
-                    {formErrors.subcategory && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.subcategory}</p>
-                    )}
-                  </div>
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Subcategoría *
+  </label>
+  <select
+    name="subcategoryId"  // 🔥 CAMBIO
+    value={formData.subcategoryId || ''}  // 🔥 CAMBIO
+    onChange={onSubcategoryChange}
+    disabled={!formData.categoryId || subcategories.length === 0}  // 🔥 CAMBIO
+    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+      formErrors.subcategory ? 'border-red-500' : 'border-gray-300'
+    } ${!formData.categoryId ? 'bg-gray-100' : ''}`}  // 🔥 CAMBIO
+  >
+    <option value="">
+      {!formData.categoryId   // 🔥 CAMBIO
+        ? 'Primero selecciona una categoría' 
+        : subcategories.length === 0
+        ? 'Esta categoría no tiene subcategorías'
+        : 'Seleccionar subcategoría'
+      }
+    </option>
+    {subcategories.map(subcategory => (
+      <option key={subcategory.dbId} value={subcategory.dbId}>  {/* 🔥 CAMBIO */}
+        {subcategory.name}
+      </option>
+    ))}
+  </select>
+  {formErrors.subcategory && (
+    <p className="text-red-500 text-sm mt-1">{formErrors.subcategory}</p>
+  )}
+</div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1271,59 +1271,59 @@ const ProductManager = () => {
   }, [formErrors]);
 
   const handleCategoryChange = useCallback((e) => {
-    const categorySlug = e.target.value;
-    const selectedCategory = Object.values(categories).find(c => c.slug === categorySlug);
-    
-    setFormData(prev => ({
-      ...prev,
-      category: categorySlug,
-      categoryId: selectedCategory?.dbId || null,
-      categoryName: selectedCategory?.name || '',
-      subcategory: '',
-      subcategoryId: null,
-      subcategoryName: ''
-    }));
-    
-    if (selectedCategory?.subcategories) {
-      setSubcategories(Object.values(selectedCategory.subcategories));
-    } else {
-      setSubcategories([]);
-    }
-    
-    const variantTypes = getVariantTypes(categorySlug);
-    if (variantTypes.length > 0) {
-      setSelectedVariantType(variantTypes[0].type);
-      setNewVariant({
-        type: variantTypes[0].type,
-        name: '',
-        value: variantTypes[0].type === 'color' ? '#000000' : '',
-        stock: 0,
-        sku: '',
-        available: true
-      });
-    }
-    
-    if (formErrors.category) {
-      setFormErrors(prev => ({ ...prev, category: '' }));
-    }
-  }, [categories, formErrors]);
-
+  const categoryId = parseInt(e.target.value);  // 🔥 Ahora es el ID numérico
+  const selectedCategory = Object.values(categories).find(c => c.dbId === categoryId);  // 🔥 CAMBIO
+  
+  setFormData(prev => ({
+    ...prev,
+    category: selectedCategory?.slug || '',  // Mantener el slug para compatibilidad
+    categoryId: categoryId,  // 🔥 El ID numérico
+    categoryName: selectedCategory?.name || '',
+    subcategory: '',
+    subcategoryId: null,  // 🔥 Limpiar
+    subcategoryName: ''
+  }));
+  
+  if (selectedCategory?.subcategories) {
+    setSubcategories(Object.values(selectedCategory.subcategories));
+  } else {
+    setSubcategories([]);
+  }
+  
+  const variantTypes = getVariantTypes(selectedCategory?.slug || '');
+  if (variantTypes.length > 0) {
+    setSelectedVariantType(variantTypes[0].type);
+    setNewVariant({
+      type: variantTypes[0].type,
+      name: '',
+      value: variantTypes[0].type === 'color' ? '#000000' : '',
+      stock: 0,
+      sku: '',
+      available: true
+    });
+  }
+  
+  if (formErrors.category) {
+    setFormErrors(prev => ({ ...prev, category: '' }));
+  }
+}, [categories, formErrors]);
+  
   const handleSubcategoryChange = useCallback((e) => {
-    const subcategorySlug = e.target.value;
-    const selectedSubcategory = subcategories.find(s => s.slug === subcategorySlug);
-    
-    setFormData(prev => ({
-      ...prev,
-      subcategory: subcategorySlug,
-      subcategoryId: selectedSubcategory?.dbId || null,
-      subcategoryName: selectedSubcategory?.name || ''
-    }));
-    
-    if (formErrors.subcategory) {
-      setFormErrors(prev => ({ ...prev, subcategory: '' }));
-    }
-  }, [subcategories, formErrors]);
-
+  const subcategoryId = parseInt(e.target.value);  // 🔥 Ahora es el ID numérico
+  const selectedSubcategory = subcategories.find(s => s.dbId === subcategoryId);  // 🔥 CAMBIO
+  
+  setFormData(prev => ({
+    ...prev,
+    subcategory: selectedSubcategory?.slug || '',  // Mantener el slug
+    subcategoryId: subcategoryId,  // 🔥 El ID numérico
+    subcategoryName: selectedSubcategory?.name || ''
+  }));
+  
+  if (formErrors.subcategory) {
+    setFormErrors(prev => ({ ...prev, subcategory: '' }));
+  }
+}, [subcategories, formErrors]);
+  
   const handleSpecificationChange = useCallback((field, value) => {
     setNewSpecification(prev => {
       const updated = { ...prev, [field]: value };
