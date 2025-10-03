@@ -32,32 +32,26 @@ const useProductFilters = (products) => {
 
     // 🔥 FILTRO POR CATEGORÍAS MEJORADO
     if (selectedCategories.length > 0) {
-      filtered = filtered.filter(product => {
-        // Buscar coincidencia en múltiples campos
-        const productCategories = [
-          product.category,           // Slug de categoría (ej: "tecnologia")
-          product.categoryName,       // Nombre de categoría (ej: "Tecnología")
-          product.subcategory,        // Slug de subcategoría (ej: "smartphones")
-          product.subcategoryName     // Nombre de subcategoría (ej: "Smartphones")
-        ].filter(Boolean); // Eliminar valores null/undefined
+  filtered = filtered.filter(product => {
+    const searchTerms = [
+      product.category,          // "moda", "tecnologia"
+      product.categoryName,      // "Moda", "Tecnología"
+      product.name,              // Nombre del producto
+      product.brand,             // Marca
+      product.model,             // Modelo
+      product.description        // Descripción
+    ].filter(Boolean).map(term => term.toLowerCase());
 
-        // Verificar si alguna categoría seleccionada coincide
-        return selectedCategories.some(selectedCat => {
-          const selectedLower = selectedCat.toLowerCase();
-          
-          return productCategories.some(prodCat => {
-            if (!prodCat) return false;
-            const prodLower = prodCat.toLowerCase();
-            
-            // Coincidencia exacta o parcial
-            return prodLower === selectedLower || 
-                   prodLower.includes(selectedLower) ||
-                   selectedLower.includes(prodLower);
-          });
-        });
-      });
-    }
-
+    return selectedCategories.some(selectedCat => {
+      const selectedLower = selectedCat.toLowerCase();
+      
+      // Buscar coincidencia en cualquier término
+      return searchTerms.some(term => 
+        term.includes(selectedLower) || selectedLower.includes(term)
+      );
+    });
+  });
+}
     // Filtro por rango de precios
     filtered = filtered.filter(product => 
       product.price >= priceRange.min && product.price <= priceRange.max
