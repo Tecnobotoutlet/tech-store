@@ -29,6 +29,12 @@ const ProductFilters = ({
 
   // Obtener lista de categorías para filtros
   const categoryList = useMemo(() => {
+    console.log('=== DEBUG FILTROS ===');
+console.log('Productos totales:', products.length);
+console.log('Primer producto:', products[0]);
+console.log('Categorías seleccionadas:', selectedCategories);
+console.log('====================');
+    
     const list = [];
     Object.values(categories).forEach(category => {
       // Agregar categoría principal
