@@ -1,9 +1,13 @@
-// src/components/admin/ProductManager.js - Versión Completa con Sistema de Variantes
+// src/components/admin/ProductManager.js - VERSIÓN COMPLETA CON MARCAS Y ESPECIFICACIONES DINÁMICAS
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProducts } from '../../context/ProductContext';
 import { categoryService } from '../../services/categoryService';
+import { createBrand, getAllBrands } from '../../services/brandService';
+import { createSpecificationType, getAllSpecificationTypes } from '../../services/specificationTypeService';
 import { getSpecificationTemplate, getVariantTypes } from '../../data/specificationTemplates';
+import AddBrandModal from './AddBrandModal';
+import AddSpecificationModal from './AddSpecificationModal';
 import {
   Plus,
   Search,
@@ -27,43 +31,6 @@ import {
 } from 'lucide-react';
 
 let isCreatingProduct = false;
-
-// Constantes
-const BRANDS = [
-  'Apple',
-  'Samsung',
-  'Google',
-  'Xiaomi',
-  'Sony',
-  'HP',
-  'Dell',
-  'Asus',
-  'Nike',
-  'Adidas',
-  'IKEA',
-  'Centrum',
-  'Zara',
-  'H&M',
-  'Levi\'s'
-];
-
-const SPECIFICATION_TYPES = [
-  { type: "processor", label: "Procesador" },
-  { type: "ram", label: "Memoria RAM" },
-  { type: "storage", label: "Almacenamiento" },
-  { type: "display", label: "Pantalla" },
-  { type: "camera", label: "Cámara" },
-  { type: "battery", label: "Batería" },
-  { type: "os", label: "Sistema Operativo" },
-  { type: "connectivity", label: "Conectividad" },
-  { type: "material", label: "Material" },
-  { type: "dimensions", label: "Dimensiones" },
-  { type: "weight", label: "Peso" },
-  { type: "graphics", label: "Gráficos" },
-  { type: "ports", label: "Puertos" },
-  { type: "size", label: "Talla/Tamaño" },
-  { type: "other", label: "Otro" }
-];
 
 const INITIAL_FORM_DATA = {
   name: '',
@@ -112,6 +79,8 @@ const CompleteProductModal = React.memo(({
   newTag,
   categories,
   subcategories,
+  brands,
+  specificationTypes,
   isSaving,
   onClose, 
   onSave, 
@@ -135,7 +104,9 @@ const CompleteProductModal = React.memo(({
   onRemoveTag,
   onUpdateImageField,
   onAddImageField,
-  onRemoveImageField
+  onRemoveImageField,
+  onOpenAddBrandModal,
+  onOpenAddSpecModal
 }) => {
   if (!showModal) return null;
 
@@ -386,19 +357,30 @@ const CompleteProductModal = React.memo(({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Marca *
                     </label>
-                    <select
-                      name="brand"
-                      value={formData.brand}
-                      onChange={onInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.brand ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Seleccionar marca</option>
-                      {BRANDS.map(brand => (
-                        <option key={brand} value={brand}>{brand}</option>
-                      ))}
-                    </select>
+                    <div className="flex space-x-2">
+                      <select
+                        name="brand"
+                        value={formData.brand}
+                        onChange={onInputChange}
+                        className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          formErrors.brand ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      >
+                        <option value="">Seleccionar marca</option>
+                        {brands.map(brand => (
+                          <option key={brand.id} value={brand.name}>{brand.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={onOpenAddBrandModal}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center whitespace-nowrap"
+                        title="Agregar nueva marca"
+                      >
+                        <PlusCircle className="w-4 h-4 mr-1" />
+                        Nueva
+                      </button>
+                    </div>
                     {formErrors.brand && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.brand}</p>
                     )}
@@ -469,16 +451,29 @@ const CompleteProductModal = React.memo(({
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <select
-                    value={newSpecification.type}
-                    onChange={(e) => onSpecificationChange('type', e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Tipo de especificación</option>
-                    {SPECIFICATION_TYPES.map(type => (
-                      <option key={type.type} value={type.type}>{type.label}</option>
-                    ))}
-                  </select>
+                  <div className="flex space-x-2">
+                    <select
+                      value={newSpecification.type}
+                      onChange={(e) => onSpecificationChange('type', e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Tipo de especificación</option>
+                      {specificationTypes
+                        .filter(st => !formData.category || !st.category || st.category === formData.category)
+                        .map(type => (
+                          <option key={type.id} value={type.type}>{type.label}</option>
+                        ))
+                      }
+                    </select>
+                    <button
+                      type="button"
+                      onClick={onOpenAddSpecModal}
+                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center whitespace-nowrap"
+                      title="Agregar nuevo tipo"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                    </button>
+                  </div>
                   
                   <input
                     type="text"
@@ -589,7 +584,6 @@ const CompleteProductModal = React.memo(({
                       {formData.variants.map((variant, index) => (
                         <div key={variant.id || index} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
                           <div className="flex items-center space-x-4 flex-1">
-                            {/* Visual del variant */}
                             {variant.type === 'color' ? (
                               <div
                                 className="w-10 h-10 rounded-lg border-2 border-gray-300 flex-shrink-0"
@@ -603,7 +597,6 @@ const CompleteProductModal = React.memo(({
                               </div>
                             )}
                             
-                            {/* Información */}
                             <div className="flex-1">
                               <div className="flex items-center space-x-2">
                                 <span className="font-medium text-gray-900">{variant.name}</span>
@@ -628,7 +621,6 @@ const CompleteProductModal = React.memo(({
                               </div>
                             </div>
                             
-                            {/* Botón eliminar */}
                             <button
                               type="button"
                               onClick={() => onRemoveVariant(index)}
@@ -641,7 +633,6 @@ const CompleteProductModal = React.memo(({
                       ))}
                     </div>
                     
-                    {/* Resumen de stock total */}
                     <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-blue-800 font-medium">Stock total en variantes:</span>
@@ -660,7 +651,6 @@ const CompleteProductModal = React.memo(({
                   </h5>
                   
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    {/* Nombre */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Nombre *
@@ -678,7 +668,6 @@ const CompleteProductModal = React.memo(({
                       />
                     </div>
                     
-                    {/* Valor (color picker o texto) */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         {selectedVariantType === 'color' ? 'Color' : 'Valor'} *
@@ -713,7 +702,6 @@ const CompleteProductModal = React.memo(({
                       )}
                     </div>
                     
-                    {/* Stock */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Stock *
@@ -728,7 +716,6 @@ const CompleteProductModal = React.memo(({
                       />
                     </div>
                     
-                    {/* SKU (opcional) */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         SKU (opcional)
@@ -742,7 +729,6 @@ const CompleteProductModal = React.memo(({
                       />
                     </div>
                     
-                    {/* Botón agregar */}
                     <div className="flex items-end">
                       <button
                         type="button"
@@ -756,7 +742,6 @@ const CompleteProductModal = React.memo(({
                     </div>
                   </div>
                   
-                  {/* Checkbox disponible */}
                   <div className="mt-3">
                     <label className="flex items-center space-x-2 text-sm">
                       <input
@@ -770,7 +755,6 @@ const CompleteProductModal = React.memo(({
                   </div>
                 </div>
 
-                {/* Ayuda */}
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start space-x-2">
                     <Info className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -966,6 +950,16 @@ const ProductManager = () => {
   const [subcategories, setSubcategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
+  // Estados para marcas
+  const [brands, setBrands] = useState([]);
+  const [loadingBrands, setLoadingBrands] = useState(true);
+  const [showAddBrandModal, setShowAddBrandModal] = useState(false);
+
+  // Estados para tipos de especificaciones
+  const [specificationTypes, setSpecificationTypes] = useState([]);
+  const [loadingSpecTypes, setLoadingSpecTypes] = useState(true);
+  const [showAddSpecModal, setShowAddSpecModal] = useState(false);
+
   // Estados para formularios dinámicos
   const [newSpecification, setNewSpecification] = useState({ type: '', label: '', value: '' });
   const [newFeature, setNewFeature] = useState('');
@@ -995,6 +989,40 @@ const ProductManager = () => {
     };
     
     loadCategories();
+  }, []);
+
+  // Cargar marcas
+  useEffect(() => {
+    const loadBrands = async () => {
+      setLoadingBrands(true);
+      try {
+        const data = await getAllBrands();
+        setBrands(data);
+      } catch (error) {
+        console.error('Error loading brands:', error);
+      } finally {
+        setLoadingBrands(false);
+      }
+    };
+    
+    loadBrands();
+  }, []);
+
+  // Cargar tipos de especificaciones
+  useEffect(() => {
+    const loadSpecTypes = async () => {
+      setLoadingSpecTypes(true);
+      try {
+        const data = await getAllSpecificationTypes();
+        setSpecificationTypes(data);
+      } catch (error) {
+        console.error('Error loading specification types:', error);
+      } finally {
+        setLoadingSpecTypes(false);
+      }
+    };
+    
+    loadSpecTypes();
   }, []);
 
   const formatCurrency = useCallback((amount) => {
@@ -1076,7 +1104,6 @@ const ProductManager = () => {
     setModalMode('edit');
     setSelectedProduct(product);
     
-    // Cargar subcategorías
     const categorySlug = product.category;
     if (categorySlug && categories[categorySlug]?.subcategories) {
       setSubcategories(Object.values(categories[categorySlug].subcategories));
@@ -1258,7 +1285,6 @@ const ProductManager = () => {
       setSubcategories([]);
     }
     
-    // Resetear tipo de variante según categoría
     const variantTypes = getVariantTypes(categorySlug);
     if (variantTypes.length > 0) {
       setSelectedVariantType(variantTypes[0].type);
@@ -1297,16 +1323,16 @@ const ProductManager = () => {
     setNewSpecification(prev => {
       const updated = { ...prev, [field]: value };
       if (field === 'type') {
-        const selectedType = SPECIFICATION_TYPES.find(t => t.type === value);
+        const selectedType = specificationTypes.find(t => t.type === value);
         updated.label = selectedType ? selectedType.label : '';
       }
       return updated;
     });
-  }, []);
+  }, [specificationTypes]);
 
   const handleAddSpecification = useCallback(() => {
     if (newSpecification.type && newSpecification.label && newSpecification.value) {
-      const selectedType = SPECIFICATION_TYPES.find(t => t.type === newSpecification.type);
+      const selectedType = specificationTypes.find(t => t.type === newSpecification.type);
       const spec = {
         type: newSpecification.type,
         label: selectedType ? selectedType.label : newSpecification.label,
@@ -1320,7 +1346,7 @@ const ProductManager = () => {
       
       setNewSpecification({ type: '', label: '', value: '' });
     }
-  }, [newSpecification]);
+  }, [newSpecification, specificationTypes]);
 
   const handleRemoveSpecification = useCallback((index) => {
     setFormData(prev => ({
@@ -1439,6 +1465,33 @@ const ProductManager = () => {
     }));
   }, []);
 
+  // Handlers para agregar nueva marca y especificación
+  const handleAddNewBrand = useCallback(async (brandData) => {
+    try {
+      const newBrand = await createBrand(brandData);
+      setBrands(prev => [...prev, newBrand].sort((a, b) => a.name.localeCompare(b.name)));
+      setFormData(prev => ({ ...prev, brand: newBrand.name }));
+    } catch (error) {
+      console.error('Error adding brand:', error);
+      throw error;
+    }
+  }, []);
+
+  const handleAddNewSpecType = useCallback(async (specData) => {
+    try {
+      const newSpecType = await createSpecificationType(specData);
+      setSpecificationTypes(prev => [...prev, newSpecType].sort((a, b) => a.label.localeCompare(b.label)));
+      setNewSpecification({
+        type: newSpecType.type,
+        label: newSpecType.label,
+        value: ''
+      });
+    } catch (error) {
+      console.error('Error adding specification type:', error);
+      throw error;
+    }
+  }, []);
+
   const getStockStatus = useCallback((product) => {
     const stock = product.stockQuantity || product.stock || 0;
     if (stock === 0) return { label: 'Sin Stock', color: 'bg-red-100 text-red-800' };
@@ -1508,8 +1561,8 @@ const ProductManager = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Todas las marcas</option>
-              {BRANDS.map(brand => (
-                <option key={brand} value={brand}>{brand}</option>
+              {brands.map(brand => (
+                <option key={brand.id} value={brand.name}>{brand.name}</option>
               ))}
             </select>
           </div>
@@ -1664,7 +1717,7 @@ const ProductManager = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal de Producto */}
       <CompleteProductModal
         showModal={showModal}
         modalMode={modalMode}
@@ -1678,6 +1731,8 @@ const ProductManager = () => {
         newTag={newTag}
         categories={categories}
         subcategories={subcategories}
+        brands={brands}
+        specificationTypes={specificationTypes}
         isSaving={isSaving}
         onClose={() => setShowModal(false)}
         onSave={handleSaveProduct}
@@ -1702,6 +1757,22 @@ const ProductManager = () => {
         onUpdateImageField={handleUpdateImageField}
         onAddImageField={handleAddImageField}
         onRemoveImageField={handleRemoveImageField}
+        onOpenAddBrandModal={() => setShowAddBrandModal(true)}
+        onOpenAddSpecModal={() => setShowAddSpecModal(true)}
+      />
+
+      {/* Modales para agregar marcas y especificaciones */}
+      <AddBrandModal
+        isOpen={showAddBrandModal}
+        onClose={() => setShowAddBrandModal(false)}
+        onSave={handleAddNewBrand}
+      />
+
+      <AddSpecificationModal
+        isOpen={showAddSpecModal}
+        onClose={() => setShowAddSpecModal(false)}
+        onSave={handleAddNewSpecType}
+        currentCategory={formData.category}
       />
     </div>
   );
