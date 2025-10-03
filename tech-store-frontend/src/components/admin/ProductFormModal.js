@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useCategories } from '../../context/CategoryContext'; // 🔥 NUEVO
 import FocusedInput from '../FocusedInput';
-import { X, Save, PlusCircle, MinusCircle } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 
 const ProductFormModal = ({
   showModal,
@@ -8,34 +9,86 @@ const ProductFormModal = ({
   selectedProduct,
   formData,
   formErrors,
-  newSpecification,
-  newFeature,
-  newVariant,
-  newTag,
   onClose,
   onSave,
   onInputChange,
-  onSpecificationChange,
-  onFeatureChange,
-  onVariantChange,
-  onTagChange,
-  onAddSpecification,
-  onRemoveSpecification,
-  onAddFeature,
-  onRemoveFeature,
-  onAddVariant,
-  onRemoveVariant,
-  onAddTag,
-  onRemoveTag,
-  onUpdateImageField,
-  onAddImageField,
-  onRemoveImageField,
   formatCurrency,
-  getCategoryDisplayName,
-  CATEGORIES,
-  BRANDS,
-  SPECIFICATION_TYPES
+  BRANDS
 }) => {
+  // 🔥 OBTENER CATEGORÍAS DESDE SUPABASE
+  const { categories, loading: loadingCategories } = useCategories();
+
+  // 🔥 PREPARAR LISTA DE CATEGORÍAS PRINCIPALES
+  const mainCategories = useMemo(() => {
+    return Object.values(categories).filter(cat => !cat.parentId);
+  }, [categories]);
+
+  // 🔥 PREPARAR LISTA DE SUBCATEGORÍAS SEGÚN LA CATEGORÍA SELECCIONADA
+  const availableSubcategories = useMemo(() => {
+    if (!formData.categoryId) return [];
+    
+    const selectedCategory = mainCategories.find(cat => cat.dbId === parseInt(formData.categoryId));
+    if (!selectedCategory || !selectedCategory.subcategories) return [];
+    
+    return Object.values(selectedCategory.subcategories);
+  }, [formData.categoryId, mainCategories]);
+
+  // 🔥 MANEJAR CAMBIO DE CATEGORÍA
+  const handleCategoryChange = (e) => {
+    const categoryId = e.target.value;
+    const selectedCategory = mainCategories.find(cat => cat.dbId === parseInt(categoryId));
+    
+    onInputChange({
+      target: {
+        name: 'categoryId',
+        value: categoryId
+      }
+    });
+    
+    // También actualizar el nombre de la categoría
+    onInputChange({
+      target: {
+        name: 'categoryName',
+        value: selectedCategory?.name || ''
+      }
+    });
+    
+    // Limpiar subcategoría cuando cambie la categoría
+    onInputChange({
+      target: {
+        name: 'subcategoryId',
+        value: ''
+      }
+    });
+    onInputChange({
+      target: {
+        name: 'subcategoryName',
+        value: ''
+      }
+    });
+  };
+
+  // 🔥 MANEJAR CAMBIO DE SUBCATEGORÍA
+  const handleSubcategoryChange = (e) => {
+    const subcategoryId = e.target.value;
+    const selectedSubcategory = availableSubcategories.find(sub => sub.dbId === parseInt(subcategoryId));
+    
+    onInputChange({
+      target: {
+        name: 'subcategoryId',
+        value: subcategoryId
+      }
+    });
+    
+    // También actualizar el nombre de la subcategoría
+    onInputChange({
+      target: {
+        name: 'subcategoryName',
+        value: selectedSubcategory?.name || ''
+      }
+    });
+  };
+
   if (!showModal) return null;
 
   return (
@@ -52,11 +105,11 @@ const ProductFormModal = ({
           </button>
         </div>
 
-        {/* Content - Solo formulario básico */}
+        {/* Content */}
         <div className="p-6">
           {modalMode !== 'view' && (
             <form className="space-y-6">
-              {/* Información Básica SOLAMENTE */}
+              {/* Información Básica */}
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h4 className="text-lg font-semibold mb-4">Información Básica</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -82,6 +135,39 @@ const ProductFormModal = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Marca *
+                    </label>
+                    <FocusedInput
+                      type="text"
+                      name="brand"
+                      value={formData.brand}
+                      onChange={onInputChange}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        formErrors.brand ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Ej: Apple, Samsung"
+                    />
+                    {formErrors.brand && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.brand}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Modelo
+                    </label>
+                    <FocusedInput
+                      type="text"
+                      name="model"
+                      value={formData.model || ''}
+                      onChange={onInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Ej: Galaxy S24 Ultra"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Precio *
                     </label>
                     <FocusedInput
@@ -101,24 +187,16 @@ const ProductFormModal = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Categoría *
+                      Precio Original
                     </label>
-                    <select
-                      name="category"
-                      value={formData.category}
+                    <FocusedInput
+                      type="number"
+                      name="originalPrice"
+                      value={formData.originalPrice || ''}
                       onChange={onInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.category ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Seleccionar categoría</option>
-                      {CATEGORIES.map(category => (
-                        <option key={category} value={category}>{getCategoryDisplayName(category)}</option>
-                      ))}
-                    </select>
-                    {formErrors.category && (
-                      <p className="text-red-500 text-sm mt-1">{formErrors.category}</p>
-                    )}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="2000000"
+                    />
                   </div>
 
                   <div>
@@ -162,6 +240,86 @@ const ProductFormModal = ({
 
                 </div>
               </div>
+
+              {/* 🔥 CATEGORIZACIÓN - NUEVO */}
+              <div className="bg-blue-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold mb-4">Categorización</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Categoría Principal */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Categoría Principal *
+                    </label>
+                    {loadingCategories ? (
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                        Cargando categorías...
+                      </div>
+                    ) : (
+                      <select
+                        name="categoryId"
+                        value={formData.categoryId || ''}
+                        onChange={handleCategoryChange}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          formErrors.categoryId ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      >
+                        <option value="">Seleccionar categoría</option>
+                        {mainCategories.map(category => (
+                          <option key={category.dbId} value={category.dbId}>
+                            {category.icon} {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {formErrors.categoryId && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.categoryId}</p>
+                    )}
+                  </div>
+
+                  {/* Subcategoría */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subcategoría {availableSubcategories.length > 0 && '*'}
+                    </label>
+                    {!formData.categoryId ? (
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500">
+                        Selecciona una categoría primero
+                      </div>
+                    ) : availableSubcategories.length === 0 ? (
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500">
+                        No hay subcategorías disponibles
+                      </div>
+                    ) : (
+                      <select
+                        name="subcategoryId"
+                        value={formData.subcategoryId || ''}
+                        onChange={handleSubcategoryChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Seleccionar subcategoría</option>
+                        {availableSubcategories.map(subcategory => (
+                          <option key={subcategory.dbId} value={subcategory.dbId}>
+                            {subcategory.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Vista previa de la categorización */}
+                {formData.categoryName && (
+                  <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-semibold">Vista previa:</span> {formData.categoryName}
+                      {formData.subcategoryName && ` → ${formData.subcategoryName}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+
             </form>
           )}
         </div>
