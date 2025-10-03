@@ -1,6 +1,7 @@
 // src/context/ProductContext.js - VERSIÓN FINAL SIN CAMPOS INEXISTENTES
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { useCategories } from './CategoryContext';
 
 const ProductContext = createContext();
 
@@ -17,6 +18,25 @@ export const ProductProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const { categories } = useCategories();
+
+   // 🔥 FUNCIÓN PARA BUSCAR NOMBRE DE SUBCATEGORÍA
+  const getSubcategoryName = useCallback((subcategoryId) => {
+    if (!subcategoryId) return null;
+    
+    for (const category of Object.values(categories)) {
+      if (category.subcategories) {
+        for (const subcat of Object.values(category.subcategories)) {
+          if (subcat.dbId === subcategoryId) {
+            return subcat.name;
+          }
+        }
+      }
+    }
+    return null;
+  }, [categories]);
+
+  
   // Función para normalizar productos de Supabase
   const normalizeProduct = useCallback((product) => {
     return {
@@ -29,9 +49,11 @@ export const ProductProvider = ({ children }) => {
       categoryName: product.category_name || product.category,
       categoryId: product.category_id,
       subcategoryId: product.subcategory_id,
+      subcategoryName: getSubcategoryName(product.subcategory_id), 
       // Los campos subcategory y subcategoryName no existen en BD, los dejamos null o los derivamos
       subcategory: null,
       subcategoryName: null,
+      
       brand: product.brand,
       model: product.model,
       stock: product.stock_quantity,
@@ -55,7 +77,7 @@ export const ProductProvider = ({ children }) => {
       createdAt: product.created_at,
       updatedAt: product.updated_at
     };
-  }, []);
+  }, [getSubcategoryName]);
 
   // Cargar productos desde Supabase
   const fetchProducts = useCallback(async () => {
