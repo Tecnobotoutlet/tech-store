@@ -19,18 +19,43 @@ const useProductFilters = (products) => {
         const searchableText = [
           product.name,
           product.category,
-          ...product.specifications?.map(spec => spec.value) || []
+          product.categoryName,
+          product.brand,
+          product.description,
+          ...product.specifications?.map(spec => spec.value) || [],
+          ...product.tags || []
         ].join(' ').toLowerCase();
         
         return searchableText.includes(searchLower);
       });
     }
 
-    // Filtro por categorías
+    // 🔥 FILTRO POR CATEGORÍAS MEJORADO
     if (selectedCategories.length > 0) {
-      filtered = filtered.filter(product => 
-        selectedCategories.includes(product.category)
-      );
+      filtered = filtered.filter(product => {
+        // Buscar coincidencia en múltiples campos
+        const productCategories = [
+          product.category,           // Slug de categoría (ej: "tecnologia")
+          product.categoryName,       // Nombre de categoría (ej: "Tecnología")
+          product.subcategory,        // Slug de subcategoría (ej: "smartphones")
+          product.subcategoryName     // Nombre de subcategoría (ej: "Smartphones")
+        ].filter(Boolean); // Eliminar valores null/undefined
+
+        // Verificar si alguna categoría seleccionada coincide
+        return selectedCategories.some(selectedCat => {
+          const selectedLower = selectedCat.toLowerCase();
+          
+          return productCategories.some(prodCat => {
+            if (!prodCat) return false;
+            const prodLower = prodCat.toLowerCase();
+            
+            // Coincidencia exacta o parcial
+            return prodLower === selectedLower || 
+                   prodLower.includes(selectedLower) ||
+                   selectedLower.includes(prodLower);
+          });
+        });
+      });
     }
 
     // Filtro por rango de precios
@@ -96,12 +121,18 @@ const useProductFilters = (products) => {
   const filterStats = useMemo(() => {
     const total = products.length;
     const filtered = filteredProducts.length;
-    const categories = [...new Set(products.map(p => p.category))];
+    const categories = [...new Set(products.map(p => p.categoryName || p.category))];
     
     const categoryStats = categories.map(category => ({
       name: category,
-      count: products.filter(p => p.category === category).length,
-      filteredCount: filteredProducts.filter(p => p.category === category).length
+      count: products.filter(p => 
+        p.category === category || 
+        p.categoryName === category
+      ).length,
+      filteredCount: filteredProducts.filter(p => 
+        p.category === category || 
+        p.categoryName === category
+      ).length
     }));
 
     const priceStats = {
