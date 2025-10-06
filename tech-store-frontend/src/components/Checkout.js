@@ -1,4 +1,4 @@
-// src/components/Checkout.js - Versión actualizada con múltiples métodos
+// src/components/Checkout.js - Con Pago Contra Entrega
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -6,8 +6,10 @@ import PaymentMethodSelector from './PaymentMethodSelector';
 import CreditCardForm from './CreditCardForm';
 import NequiForm from './NequiForm';
 import PSEForm from './PSEForm';
+import CashOnDeliveryForm from './CashOnDeliveryForm';
 import wompiService from '../services/wompiService';
 import { supabase } from '../supabaseClient';
+import { isEligibleForCOD, validateCODEligibility } from '../utils/cityValidator';
 import { 
   ArrowLeft, 
   User, 
@@ -52,6 +54,23 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [showGuestCheckoutPrompt, setShowGuestCheckoutPrompt] = useState(!isAuthenticated);
+  
+  // 🔥 NUEVO: Estado para validación de COD
+  const [codEligibility, setCodEligibility] = useState({
+    eligible: false,
+    reason: ''
+  });
+
+  // 🔥 NUEVO: Validar elegibilidad de COD cuando cambia la ciudad o dirección
+  useEffect(() => {
+    const validation = validateCODEligibility(formData.city, formData.address);
+    setCodEligibility(validation);
+    
+    // Si el método actual es COD pero ya no es elegible, cambiar a tarjeta
+    if (formData.paymentMethod === 'cash_on_delivery' && !validation.eligible) {
+      setFormData(prev => ({ ...prev, paymentMethod: 'card' }));
+    }
+  }, [formData.city, formData.address, formData.paymentMethod]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -107,6 +126,11 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
     if (step === 3) {
       if (!formData.acceptTerms) newErrors.acceptTerms = 'Debes aceptar los términos';
+      
+      // Validar que si seleccionó COD, la ciudad sea elegible
+      if (formData.paymentMethod === 'cash_on_delivery' && !codEligibility.eligible) {
+        newErrors.paymentMethod = 'Pago contra entrega no disponible en tu ciudad';
+      }
     }
 
     setErrors(newErrors);
@@ -123,7 +147,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const createOrder = async () => {
+  const createOrder = async (paymentStatus = 'pending') => {
     try {
       const orderData = {
         user_id: user?.id || null,
@@ -133,7 +157,7 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         tax: 0,
         discount: 0,
         status: 'pending',
-        payment_status: 'pending',
+        payment_status: paymentStatus,
         payment_method: formData.paymentMethod,
         customer_email: formData.email,
         customer_phone: formData.phone,
@@ -203,7 +227,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
   const handlePaymentSuccess = (result) => {
     if (result.paymentUrl) {
-      // Redirigir a URL de pago (Nequi, PSE, etc.)
       window.location.href = result.paymentUrl;
     } else {
       clearCart();
@@ -230,6 +253,54 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         error: error.error || error.message,
         reference: error.reference
       });
+    }
+  };
+
+  // 🔥 NUEVO: Handler para Pago Contra Entrega
+  const handleCashOnDeliveryPayment = async () => {
+    if (!validateStep(3)) return;
+    
+    if (!codEligibility.eligible) {
+      setErrors({ payment: 'Pago contra entrega no disponible en tu ciudad' });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Crear orden con estado "pendiente de pago"
+      const order = await createOrder('pending');
+
+      // Actualizar orden con notas especiales para COD
+      await supabase
+        .from('orders')
+        .update({
+          status: 'confirmed', // Orden confirmada, esperando entrega
+          payment_status: 'pending', // Pago pendiente hasta la entrega
+          notes: `Pago contra entrega en ${formData.city}. Cliente pagará ${formatPrice(total)} en efectivo al recibir el pedido.`
+        })
+        .eq('id', order.id);
+
+      clearCart();
+      
+      if (onPaymentSuccess) {
+        onPaymentSuccess({
+          reference: `COD-${order.id}`,
+          transactionId: null,
+          amount: total,
+          orderId: order.id,
+          items: items,
+          customerData: formData,
+          paymentMethod: 'cash_on_delivery',
+          status: 'CONFIRMED'
+        });
+      }
+
+    } catch (error) {
+      console.error('Error en Cash on Delivery:', error);
+      handlePaymentError(error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -275,112 +346,6 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
   // HANDLER: Nequi
   const handleNequiPayment = async (phoneNumber) => {
-  if (!validateStep(3)) return;
-
-  setIsProcessing(true);
-
-  try {
-    const order = await createOrder();
-
-    const result = await wompiService.processNequiPayment({
-      orderId: order.id,
-      amount: Math.round(total * 100),
-      phoneNumber: phoneNumber,
-      customerData: getCustomerData(),
-      shippingAddress: getShippingAddress()
-    });
-
-    if (result.success) {
-      console.log('Resultado Nequi:', result);
-      
-      // Guardar info en localStorage
-      localStorage.setItem('payment_reference', result.reference);
-      localStorage.setItem('payment_transaction_id', result.transactionId);
-      localStorage.setItem('order_id', order.id.toString());
-      
-      // Si hay URL, redirigir
-      if (result.paymentUrl) {
-        console.log('Redirigiendo a Nequi:', result.paymentUrl);
-        window.location.href = result.paymentUrl;
-        return;
-      }
-      
-      // Si NO hay URL (notificación push normal de Nequi)
-      console.log('Nequi: Transacción creada, esperando aprobación en el teléfono');
-      clearCart();
-      
-      // Ir a página de resultado con estado pendiente
-      if (onPaymentSuccess) {
-        onPaymentSuccess({
-          reference: result.reference,
-          transactionId: result.transactionId,
-          amount: total,
-          orderId: order.id,
-          items: items,
-          customerData: formData,
-          status: 'PENDING',
-          paymentMethod: 'NEQUI'
-        });
-      }
-    } else {
-      throw new Error(result.error || 'Error procesando Nequi');
-    }
-
-  } catch (error) {
-    console.error('Error en Nequi payment:', error);
-    handlePaymentError(error);
-  } finally {
-    setIsProcessing(false);
-  }
-};
-
-  // HANDLER: PSE
-  const handlePSEPayment = async (pseData) => {
-  if (!validateStep(3)) return;
-
-  setIsProcessing(true);
-
-  try {
-    const order = await createOrder();
-
-    const result = await wompiService.processPSEPayment({
-      orderId: order.id,
-      amount: Math.round(total * 100),
-      customerData: getCustomerData(),
-      pseData: pseData,
-      shippingAddress: getShippingAddress()
-    });
-
-    if (result.success) {
-      // IMPORTANTE: Si hay paymentUrl, redirigir SIEMPRE
-      if (result.paymentUrl) {
-        console.log('Redirigiendo a PSE:', result.paymentUrl);
-        localStorage.setItem('payment_reference', result.reference);
-        localStorage.setItem('payment_transaction_id', result.transactionId);
-        localStorage.setItem('order_id', order.id.toString());
-        window.location.href = result.paymentUrl;
-        return; // No continuar
-      }
-      
-      // Solo si NO hay URL y es APPROVED
-      if (result.status === 'APPROVED') {
-        clearCart();
-        handlePaymentSuccess({ ...result, orderId: order.id });
-      } else {
-        throw new Error('Esperando confirmación del pago');
-      }
-    } else {
-      throw new Error(result.error || 'Error procesando PSE');
-    }
-
-  } catch (error) {
-    handlePaymentError(error);
-  } finally {
-    setIsProcessing(false);
-  }
-};
-  // HANDLER: Bancolombia
-  const handleBancolombiaPayment = async () => {
     if (!validateStep(3)) return;
 
     setIsProcessing(true);
@@ -388,17 +353,83 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
     try {
       const order = await createOrder();
 
-      const result = await wompiService.processBancolombiaPayment({
+      const result = await wompiService.processNequiPayment({
         orderId: order.id,
-        amount: total,
+        amount: Math.round(total * 100),
+        phoneNumber: phoneNumber,
         customerData: getCustomerData(),
         shippingAddress: getShippingAddress()
       });
 
       if (result.success) {
-        handlePaymentSuccess({ ...result, orderId: order.id });
+        localStorage.setItem('payment_reference', result.reference);
+        localStorage.setItem('payment_transaction_id', result.transactionId);
+        localStorage.setItem('order_id', order.id.toString());
+        
+        if (result.paymentUrl) {
+          window.location.href = result.paymentUrl;
+          return;
+        }
+        
+        clearCart();
+        
+        if (onPaymentSuccess) {
+          onPaymentSuccess({
+            reference: result.reference,
+            transactionId: result.transactionId,
+            amount: total,
+            orderId: order.id,
+            items: items,
+            customerData: formData,
+            status: 'PENDING',
+            paymentMethod: 'NEQUI'
+          });
+        }
       } else {
-        throw new Error(result.error || 'Error procesando Bancolombia');
+        throw new Error(result.error || 'Error procesando Nequi');
+      }
+
+    } catch (error) {
+      handlePaymentError(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // HANDLER: PSE
+  const handlePSEPayment = async (pseData) => {
+    if (!validateStep(3)) return;
+
+    setIsProcessing(true);
+
+    try {
+      const order = await createOrder();
+
+      const result = await wompiService.processPSEPayment({
+        orderId: order.id,
+        amount: Math.round(total * 100),
+        customerData: getCustomerData(),
+        pseData: pseData,
+        shippingAddress: getShippingAddress()
+      });
+
+      if (result.success) {
+        if (result.paymentUrl) {
+          localStorage.setItem('payment_reference', result.reference);
+          localStorage.setItem('payment_transaction_id', result.transactionId);
+          localStorage.setItem('order_id', order.id.toString());
+          window.location.href = result.paymentUrl;
+          return;
+        }
+        
+        if (result.status === 'APPROVED') {
+          clearCart();
+          handlePaymentSuccess({ ...result, orderId: order.id });
+        } else {
+          throw new Error('Esperando confirmación del pago');
+        }
+      } else {
+        throw new Error(result.error || 'Error procesando PSE');
       }
 
     } catch (error) {
@@ -584,6 +615,38 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
       </div>
 
+      {/* 🔥 NUEVO: Mostrar alerta de elegibilidad COD */}
+      {formData.city && (
+        <div className={`border-2 rounded-lg p-4 ${
+          codEligibility.eligible 
+            ? 'bg-green-50 border-green-200' 
+            : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div className="flex items-start space-x-3">
+            {codEligibility.eligible ? (
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className={`text-sm font-medium ${
+                codEligibility.eligible ? 'text-green-900' : 'text-amber-900'
+              }`}>
+                {codEligibility.eligible 
+                  ? '✓ Pago contra entrega disponible en tu ciudad'
+                  : '× Pago contra entrega no disponible'
+                }
+              </p>
+              <p className={`text-sm ${
+                codEligibility.eligible ? 'text-green-700' : 'text-amber-700'
+              }`}>
+                {codEligibility.reason}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Dirección completa *</label>
         <input
@@ -618,6 +681,16 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
             <option value="Bucaramanga">Bucaramanga</option>
             <option value="Pereira">Pereira</option>
             <option value="Manizales">Manizales</option>
+            <option value="Cúcuta">Cúcuta</option>
+            <option value="Santa Marta">Santa Marta</option>
+            <option value="Ibagué">Ibagué</option>
+            <option value="Pasto">Pasto</option>
+            <option value="Neiva">Neiva</option>
+            <option value="Armenia">Armenia</option>
+            <option value="Popayán">Popayán</option>
+            <option value="Valledupar">Valledupar</option>
+            <option value="Montería">Montería</option>
+            <option value="Otra">Otra ciudad</option>
           </select>
           {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
         </div>
@@ -699,10 +772,12 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
         </div>
       </div>
 
-      {/* Selector de método de pago */}
+      {/* 🔥 ACTUALIZADO: Pasar props de COD */}
       <PaymentMethodSelector 
         selectedMethod={formData.paymentMethod}
         onMethodChange={(method) => setFormData(prev => ({ ...prev, paymentMethod: method }))}
+        isEligibleForCOD={codEligibility.eligible}
+        shippingCity={formData.city}
       />
 
       {/* Formulario según método seleccionado */}
@@ -729,10 +804,14 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
           />
         )}
 
-        {formData.paymentMethod === 'bancolombia' && (
-          <div className="text-center py-8">
-            <p className="mb-4 text-gray-600">Bancolombia estará disponible próximamente</p>
-          </div>
+        {/* 🔥 NUEVO: Formulario de Pago Contra Entrega */}
+        {formData.paymentMethod === 'cash_on_delivery' && (
+          <CashOnDeliveryForm 
+            onSubmit={handleCashOnDeliveryPayment}
+            isProcessing={isProcessing}
+            shippingCity={formData.city}
+            isEligibleCity={codEligibility.eligible}
+          />
         )}
       </div>
 
