@@ -20,6 +20,7 @@ const useProductFilters = (products) => {
           product.name,
           product.category,
           product.categoryName,
+          product.subcategoryName,
           product.brand,
           product.description,
           ...product.specifications?.map(spec => spec.value) || [],
@@ -30,30 +31,26 @@ const useProductFilters = (products) => {
       });
     }
 
-    // 🔥 FILTRO POR CATEGORÍAS MEJORADO
+    // 🔥 FILTRO POR CATEGORÍAS Y SUBCATEGORÍAS CORREGIDO
     if (selectedCategories.length > 0) {
       filtered = filtered.filter(product => {
-        // Buscar coincidencia en múltiples campos
-        const productCategories = [
-          product.category,           // Slug de categoría (ej: "tecnologia")
-          product.categoryName,       // Nombre de categoría (ej: "Tecnología")
-          product.subcategory,        // Slug de subcategoría (ej: "smartphones")
-          product.subcategoryName     // Nombre de subcategoría (ej: "Smartphones")
-        ].filter(Boolean); // Eliminar valores null/undefined
+        const searchTerms = [
+          product.category,          // "tecnologia"
+          product.categoryName,      // "Tecnología"
+          product.subcategoryName,   // 🔥 AGREGADO: "Smartphones"
+          product.name,              
+          product.brand,             
+          product.model,             
+          product.description        
+        ].filter(Boolean).map(term => term.toLowerCase());
 
-        // Verificar si alguna categoría seleccionada coincide
         return selectedCategories.some(selectedCat => {
           const selectedLower = selectedCat.toLowerCase();
           
-          return productCategories.some(prodCat => {
-            if (!prodCat) return false;
-            const prodLower = prodCat.toLowerCase();
-            
-            // Coincidencia exacta o parcial
-            return prodLower === selectedLower || 
-                   prodLower.includes(selectedLower) ||
-                   selectedLower.includes(prodLower);
-          });
+          // Buscar coincidencia en cualquier término
+          return searchTerms.some(term => 
+            term.includes(selectedLower) || selectedLower.includes(term)
+          );
         });
       });
     }
@@ -86,7 +83,6 @@ const useProductFilters = (products) => {
         break;
       case 'newest':
         filtered.sort((a, b) => {
-          // Primero productos nuevos, luego por ID descendente
           if (a.isNew && !b.isNew) return -1;
           if (!a.isNew && b.isNew) return 1;
           return b.id - a.id;
@@ -98,7 +94,6 @@ const useProductFilters = (products) => {
       case 'featured':
       default:
         filtered.sort((a, b) => {
-          // Primero productos destacados, luego por rating
           if (a.isFeatured && !b.isFeatured) return -1;
           if (!a.isFeatured && b.isFeatured) return 1;
           return b.rating - a.rating;
