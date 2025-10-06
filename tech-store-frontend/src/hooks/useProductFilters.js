@@ -20,6 +20,7 @@ const useProductFilters = (products) => {
           product.name,
           product.category,
           product.categoryName,
+          product.subcategoryName,
           product.brand,
           product.description,
           ...product.specifications?.map(spec => spec.value) || [],
@@ -30,28 +31,30 @@ const useProductFilters = (products) => {
       });
     }
 
-    // 🔥 FILTRO POR CATEGORÍAS MEJORADO
+    // 🔥 FILTRO POR CATEGORÍAS Y SUBCATEGORÍAS CORREGIDO
     if (selectedCategories.length > 0) {
-  filtered = filtered.filter(product => {
-    const searchTerms = [
-      product.category,          // "moda", "tecnologia"
-      product.categoryName,      // "Moda", "Tecnología"
-      product.name,              // Nombre del producto
-      product.brand,             // Marca
-      product.model,             // Modelo
-      product.description        // Descripción
-    ].filter(Boolean).map(term => term.toLowerCase());
+      filtered = filtered.filter(product => {
+        const searchTerms = [
+          product.category,          // "tecnologia"
+          product.categoryName,      // "Tecnología"
+          product.subcategoryName,   // 🔥 AGREGADO: "Smartphones"
+          product.name,              
+          product.brand,             
+          product.model,             
+          product.description        
+        ].filter(Boolean).map(term => term.toLowerCase());
 
-    return selectedCategories.some(selectedCat => {
-      const selectedLower = selectedCat.toLowerCase();
-      
-      // Buscar coincidencia en cualquier término
-      return searchTerms.some(term => 
-        term.includes(selectedLower) || selectedLower.includes(term)
-      );
-    });
-  });
-}
+        return selectedCategories.some(selectedCat => {
+          const selectedLower = selectedCat.toLowerCase();
+          
+          // Buscar coincidencia en cualquier término
+          return searchTerms.some(term => 
+            term.includes(selectedLower) || selectedLower.includes(term)
+          );
+        });
+      });
+    }
+
     // Filtro por rango de precios
     filtered = filtered.filter(product => 
       product.price >= priceRange.min && product.price <= priceRange.max
@@ -80,7 +83,6 @@ const useProductFilters = (products) => {
         break;
       case 'newest':
         filtered.sort((a, b) => {
-          // Primero productos nuevos, luego por ID descendente
           if (a.isNew && !b.isNew) return -1;
           if (!a.isNew && b.isNew) return 1;
           return b.id - a.id;
@@ -92,7 +94,6 @@ const useProductFilters = (products) => {
       case 'featured':
       default:
         filtered.sort((a, b) => {
-          // Primero productos destacados, luego por rating
           if (a.isFeatured && !b.isFeatured) return -1;
           if (!a.isFeatured && b.isFeatured) return 1;
           return b.rating - a.rating;
