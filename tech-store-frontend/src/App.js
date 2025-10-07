@@ -136,211 +136,252 @@ function AppContent() {
   };
 
   const renderHomeView = () => (
-    <main>
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 text-white py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative container mx-auto px-4 text-center">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Tu Tienda
-              <span className="block bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-                Todo en Uno
-              </span>
+  <main>
+    {/* Hero Section con diseño mixxo */}
+    <section className="relative bg-animated-gradient text-white py-32 overflow-hidden">
+      {/* Elementos flotantes decorativos */}
+      <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl float-element"></div>
+      <div className="absolute bottom-20 right-10 w-40 h-40 bg-mixxo-cyan-bright/20 rounded-full blur-3xl float-element" style={{animationDelay: '2s'}}></div>
+      <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-mixxo-purple-500/10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
+      
+      <div className="relative container mx-auto px-4 text-center">
+        <div className="max-w-5xl mx-auto">
+          {/* Logo animado */}
+          <div className="mb-8 animate-scale-in">
+            <h1 className="text-6xl md:text-8xl font-black mb-4 text-white drop-shadow-lg">
+              mixxo
             </h1>
-            <p className="text-xl md:text-2xl mb-10 text-blue-100 max-w-2xl mx-auto">
-              Los mejores productos de todas las categorías al mejor precio
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button 
-                onClick={() => handleViewCatalog()}
-                className="bg-white text-blue-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                Explorar Productos
-              </button>
-              <button 
-                onClick={() => handleViewCatalog('all', 'ofertas')}
-                className="border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white hover:text-blue-600 transition-all duration-300"
-              >
-                Ver Ofertas
-              </button>
+            <div className="flex items-center justify-center gap-3 text-xl md:text-2xl font-semibold">
+              <div className="w-16 h-1 bg-white/50 rounded-full"></div>
+              <span>TODO EN UN LUGAR</span>
+              <div className="w-16 h-1 bg-white/50 rounded-full"></div>
             </div>
-          </div>
-        </div>
-        
-        <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
-        <div className="absolute bottom-20 right-10 w-32 h-32 bg-yellow-400/20 rounded-full blur-xl"></div>
-        <div className="absolute top-1/2 left-1/2 w-40 h-40 bg-purple-400/10 rounded-full blur-2xl transform -translate-x-1/2 -translate-y-1/2"></div>
-      </section>
-
-      {/* Sección de Categorías */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-              Explora por Categorías
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Encuentra exactamente lo que buscas
-            </p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {[
-              { name: 'Tecnología', icon: '📱', category: 'tecnologia' },
-              { name: 'Hogar', icon: '🏠', category: 'hogar' },
-              { name: 'Deportes', icon: '⚽', category: 'deportes' },
-              { name: 'Moda', icon: '👕', category: 'moda' },
-              { name: 'Libros', icon: '📚', category: 'libros' },
-              { name: 'Salud', icon: '💊', category: 'salud' }
-            ].map((cat, index) => (
-              <button
-                key={index}
-                onClick={() => handleViewCatalog(cat.category)}
-                className="group p-6 bg-gray-50 rounded-2xl hover:bg-blue-50 transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1"
-              >
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">
-                  {cat.icon}
-                </div>
-                <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                  {cat.name}
-                </h3>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Productos Destacados */}
-      {featuredProducts.length > 0 && (
-        <section className="py-16 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-12">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-                  Productos Destacados
-                </h2>
-                <p className="text-gray-600 text-lg">
-                  Los productos más populares y mejor valorados
-                </p>
-              </div>
-              <button 
-                onClick={() => handleViewCatalog('all', 'destacados')}
-                className="hidden md:block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Ver Todos
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {featuredProducts.slice(0, 8).map(product => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  onProductClick={handleViewProduct}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Ofertas Especiales */}
-      {saleProducts.length > 0 && (
-        <section className="py-16 bg-red-50">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-12">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-                  <span className="text-red-600">🔥</span> Ofertas Especiales
-                </h2>
-                <p className="text-gray-600 text-lg">
-                  Aprovecha estos descuentos por tiempo limitado
-                </p>
-              </div>
-              <button 
-                onClick={() => handleViewCatalog('all', 'ofertas')}
-                className="hidden md:block bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
-              >
-                Ver Ofertas
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {saleProducts.slice(0, 8).map(product => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  onProductClick={handleViewProduct}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Características de la Tienda */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-              ¿Por qué elegirnos?
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: '💰',
-                title: 'Mejores Precios',
-                description: 'Precios competitivos garantizados en todos nuestros productos'
-              },
-              {
-                icon: '✅',
-                title: 'Calidad Garantizada',
-                description: 'Productos originales con garantía oficial'
-              },
-              {
-                icon: '🚚',
-                title: 'Envío Gratis',
-                description: 'Envío gratuito en compras superiores a $200.000'
-              },
-              {
-                icon: '🎧',
-                title: 'Soporte 24/7',
-                description: 'Atención al cliente las 24 horas, todos los días'
-              }
-            ].map((feature, index) => (
-              <div key={index} className="text-center p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow duration-300">
-                <div className="text-4xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Newsletter */}
-      <section className="bg-gray-800 text-white py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Mantente Actualizado
-          </h2>
-          <p className="text-gray-300 mb-8 text-lg">
-            Recibe ofertas exclusivas y noticias sobre nuevos productos
+          <p className="text-2xl md:text-3xl mb-12 text-white/90 max-w-3xl mx-auto font-medium leading-relaxed slide-in-bottom">
+            Descubre productos increíbles con los mejores precios y la mejor calidad
           </p>
-          <div className="flex flex-col md:flex-row gap-4 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Tu email"
-              className="flex-1 px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold transition-colors">
-              Suscribirse
+          
+          <div className="flex flex-col sm:flex-row gap-5 justify-center slide-in-bottom" style={{animationDelay: '0.2s'}}>
+            <button 
+              onClick={() => handleViewCatalog()}
+              className="group relative overflow-hidden bg-white text-mixxo-pink-500 px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-white/20 hover:scale-105"
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Explorar Catálogo
+              </span>
+            </button>
+            <button 
+              onClick={() => handleViewCatalog('all', 'ofertas')}
+              className="group glass-dark backdrop-blur-md text-white px-10 py-5 rounded-2xl font-bold text-lg border-2 border-white/30 hover:border-white transition-all duration-300 hover:scale-105"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <span className="text-2xl">🔥</span>
+                Ver Ofertas
+              </span>
             </button>
           </div>
         </div>
+      </div>
+    </section>
+
+    {/* Categorías con diseño moderno */}
+    <section className="py-20 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+            Explora por <span className="text-gradient-mixxo">Categorías</span>
+          </h2>
+          <p className="text-gray-600 text-xl font-medium">
+            Encuentra exactamente lo que necesitas
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          {[
+            { name: 'Tecnología', icon: '📱', category: 'tecnologia', gradient: 'from-mixxo-pink-500 to-mixxo-purple-500' },
+            { name: 'Hogar', icon: '🏠', category: 'hogar', gradient: 'from-mixxo-cyan-500 to-mixxo-purple-500' },
+            { name: 'Deportes', icon: '⚽', category: 'deportes', gradient: 'from-green-500 to-mixxo-cyan-500' },
+            { name: 'Moda', icon: '👕', category: 'moda', gradient: 'from-mixxo-pink-500 to-mixxo-cyan-500' },
+            { name: 'Libros', icon: '📚', category: 'libros', gradient: 'from-orange-500 to-mixxo-pink-500' },
+            { name: 'Salud', icon: '💊', category: 'salud', gradient: 'from-mixxo-purple-500 to-mixxo-pink-500' }
+          ].map((cat, index) => (
+            <button
+              key={index}
+              onClick={() => handleViewCatalog(cat.category)}
+              className="group relative p-8 glass-card rounded-3xl hover:shadow-mixxo-lg transition-all duration-300 hover:-translate-y-2 overflow-hidden"
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
+              <div className="relative">
+                <div className="text-5xl mb-4 group-hover:scale-125 transition-transform duration-300">
+                  {cat.icon}
+                </div>
+                <h3 className="font-bold text-gray-800 group-hover:text-gradient-mixxo transition-colors text-lg">
+                  {cat.name}
+                </h3>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* Productos Destacados */}
+    {featuredProducts.length > 0 && (
+      <section className="py-20 section-gradient-1">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-16">
+            <div>
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                <span className="text-gradient-pink">Destacados</span> del Mes
+              </h2>
+              <p className="text-gray-600 text-xl font-medium">
+                Los productos más populares y mejor valorados
+              </p>
+            </div>
+            <button 
+              onClick={() => handleViewCatalog('all', 'destacados')}
+              className="hidden md:block btn-cyan"
+            >
+              Ver Todos
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {featuredProducts.slice(0, 8).map(product => (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onProductClick={handleViewProduct}
+              />
+            ))}
+          </div>
+        </div>
       </section>
-    </main>
-  );
+    )}
+
+    {/* Ofertas Especiales con diseño llamativo */}
+    {saleProducts.length > 0 && (
+      <section className="py-20 bg-gradient-to-br from-mixxo-pink-50 via-mixxo-purple-50 to-mixxo-cyan-50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-mixxo-pink-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-mixxo-cyan-500/10 rounded-full blur-3xl"></div>
+        
+        <div className="container mx-auto px-4 relative">
+          <div className="flex justify-between items-center mb-16">
+            <div>
+              <div className="inline-flex items-center gap-3 bg-gradient-mixxo text-white px-6 py-3 rounded-full font-bold text-sm mb-4 shadow-mixxo">
+                <span className="text-2xl">🔥</span>
+                OFERTAS LIMITADAS
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Aprovecha Hasta <span className="text-gradient-mixxo">50% OFF</span>
+              </h2>
+              <p className="text-gray-600 text-xl font-medium">
+                Descuentos increíbles por tiempo limitado
+              </p>
+            </div>
+            <button 
+              onClick={() => handleViewCatalog('all', 'ofertas')}
+              className="hidden md:block btn-mixxo"
+            >
+              Ver Ofertas
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {saleProducts.slice(0, 8).map(product => (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onProductClick={handleViewProduct}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    {/* Beneficios de la tienda */}
+    <section className="py-20 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+            ¿Por qué elegir <span className="text-gradient-mixxo">mixxo</span>?
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {[
+            {
+              icon: '💰',
+              title: 'Mejores Precios',
+              description: 'Precios competitivos garantizados',
+              gradient: 'from-mixxo-pink-500 to-mixxo-purple-500'
+            },
+            {
+              icon: '✅',
+              title: 'Calidad Premium',
+              description: 'Productos originales certificados',
+              gradient: 'from-green-500 to-mixxo-cyan-500'
+            },
+            {
+              icon: '🚚',
+              title: 'Envío Express',
+              description: 'Recibe en 24-48 horas',
+              gradient: 'from-mixxo-cyan-500 to-mixxo-purple-500'
+            },
+            {
+              icon: '🎧',
+              title: 'Soporte 24/7',
+              description: 'Siempre aquí para ayudarte',
+              gradient: 'from-mixxo-purple-500 to-mixxo-pink-500'
+            }
+          ].map((feature, index) => (
+            <div key={index} className="group text-center p-8 glass-card rounded-3xl hover:shadow-mixxo-lg transition-all duration-300 hover:-translate-y-2">
+              <div className={`w-20 h-20 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mx-auto mb-6 text-4xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg`}>
+                {feature.icon}
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">{feature.title}</h3>
+              <p className="text-gray-600 font-medium">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* Newsletter con diseño atractivo */}
+    <section className="py-20 bg-gradient-mixxo text-white relative overflow-hidden">
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-10 w-40 h-40 bg-white rounded-full blur-3xl float-element"></div>
+        <div className="absolute bottom-10 right-10 w-60 h-60 bg-white rounded-full blur-3xl float-element" style={{animationDelay: '2s'}}></div>
+      </div>
+      
+      <div className="container mx-auto px-4 text-center relative">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-black mb-6">
+            Únete a la Familia mixxo
+          </h2>
+          <p className="text-xl mb-10 text-white/90 font-medium">
+            Recibe ofertas exclusivas, nuevos productos y descuentos especiales
+          </p>
+          <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto">
+            <input
+              type="email"
+              placeholder="Tu correo electrónico"
+              className="flex-1 px-6 py-4 rounded-2xl text-gray-800 focus:outline-none focus:ring-4 focus:ring-white/30 font-medium"
+            />
+            <button className="bg-white text-mixxo-pink-500 hover:bg-gray-100 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 hover:scale-105 shadow-xl">
+              Suscribirme 🎉
+            </button>
+          </div>
+          <p className="text-white/70 text-sm mt-6">
+            🔒 Tu información está segura. Sin spam.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+);
 
   const renderCatalogView = () => (
     <main className="py-8">
