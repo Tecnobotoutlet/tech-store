@@ -18,6 +18,7 @@ import AdminPanel from './components/admin/AdminPanel';
 import useProductFilters from './hooks/useProductFilters';
 import PWAHelper from './components/PWAHelper';
 import UserProfile from './components/UserProfile';
+import WhatsAppButton from './components/WhatsAppButton';
 
 // Componente interno que usa el contexto
 function AppContent() {
@@ -209,6 +210,17 @@ const handleCloseProfile = () => {
           </div>
         </div>
       </section>
+
+      {/* Botón flotante de WhatsApp */}
+{currentView !== 'admin' && (
+  <WhatsAppButton 
+    phoneNumber="573001234567"
+    message="Hola! Tengo una consulta sobre un producto"
+    companyName="TechStore"
+    position="right"
+    showTooltip={true}
+  />
+)}
 
       {/* Productos Destacados */}
       {featuredProducts.length > 0 && (
