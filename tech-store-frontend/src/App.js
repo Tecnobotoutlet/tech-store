@@ -1,4 +1,4 @@
-// src/App.js - Versión Corregida
+// src/App.js - Versión con WhatsApp Chatbot
 import React, { useState, useEffect } from 'react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
@@ -72,12 +72,12 @@ function AppContent() {
   };
 
   const handleViewProfile = () => {
-  setShowUserProfile(true);
-};
+    setShowUserProfile(true);
+  };
 
-const handleCloseProfile = () => {
-  setShowUserProfile(false);
-};
+  const handleCloseProfile = () => {
+    setShowUserProfile(false);
+  };
 
   const handleViewCatalog = (category = 'all', section = 'all') => {
     setCurrentView('catalog');
@@ -210,17 +210,6 @@ const handleCloseProfile = () => {
           </div>
         </div>
       </section>
-
-      {/* Botón flotante de WhatsApp */}
-{currentView !== 'admin' && (
-  <WhatsAppButton 
-    phoneNumber="573144505320"
-    message="Hola! Tengo una consulta sobre un producto"
-    companyName="TechStore"
-    position="right"
-    showTooltip={true}
-  />
-)}
 
       {/* Productos Destacados */}
       {featuredProducts.length > 0 && (
@@ -473,7 +462,16 @@ const handleCloseProfile = () => {
       {showUserProfile && (
         <UserProfile onClose={handleCloseProfile} />
       )}
-      
+
+      {/* 🔥 Botón flotante de WhatsApp con Chatbot */}
+      {currentView !== 'admin' && (
+        <WhatsAppButton 
+          phoneNumber="573144505320"
+          companyName="TechStore"
+          position="right"
+          showTooltip={true}
+        />
+      )}
       
       {currentView === 'home' && renderHomeView()}
       {currentView === 'catalog' && renderCatalogView()}
