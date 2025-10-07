@@ -522,48 +522,199 @@ function AppContent() {
       {currentView === 'admin' && renderAdminView()}
 
       {!['admin', 'checkout', 'payment-result'].includes(currentView) && (
-        <footer className="bg-slate-900 text-white py-12">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div>
-                <h3 className="text-xl font-bold mb-4">TechStore</h3>
-                <p className="text-gray-400">
-                  Tu tienda de confianza para productos de todas las categorías.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-4">Categorías</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><button onClick={() => handleViewCatalog('tecnologia')} className="hover:text-white transition-colors">Tecnología</button></li>
-                  <li><button onClick={() => handleViewCatalog('hogar')} className="hover:text-white transition-colors">Hogar</button></li>
-                  <li><button onClick={() => handleViewCatalog('deportes')} className="hover:text-white transition-colors">Deportes</button></li>
-                  <li><button onClick={() => handleViewCatalog('moda')} className="hover:text-white transition-colors">Moda</button></li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-4">Ayuda</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li>Envíos</li>
-                  <li>Devoluciones</li>
-                  <li>Garantías</li>
-                  <li>Soporte</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-4">Contacto</h4>
-                <div className="space-y-2 text-gray-400">
-                  <p>📞 +57 300 123 4567</p>
-                  <p>📧 contacto@techstore.com</p>
-                  <p>📍 Bogotá, Colombia</p>
+  <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative overflow-hidden">
+    {/* Decorative elements */}
+    <div className="absolute top-0 left-0 w-96 h-96 bg-mixxo-pink-500/5 rounded-full blur-3xl"></div>
+    <div className="absolute bottom-0 right-0 w-96 h-96 bg-mixxo-cyan-500/5 rounded-full blur-3xl"></div>
+    
+    <div className="container mx-auto px-4 relative">
+      {/* Main Footer Content */}
+      <div className="py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
+        {/* Brand Column */}
+        <div className="lg:col-span-2">
+          <div className="mb-6">
+            <h2 className="text-4xl font-black text-gradient-mixxo mb-2">mixxo</h2>
+            <p className="text-sm font-semibold text-gray-400 tracking-wider uppercase">
+              Todo en un lugar
+            </p>
+          </div>
+          <p className="text-gray-400 mb-6 leading-relaxed">
+            Tu tienda de confianza para encontrar los mejores productos de todas las categorías con la mejor calidad y al mejor precio.
+          </p>
+          
+          {/* Social Media */}
+          <div className="flex gap-3 mb-8">
+            {[
+              { icon: '📱', name: 'Instagram', color: 'from-mixxo-pink-500 to-mixxo-purple-500' },
+              { icon: '💬', name: 'WhatsApp', color: 'from-green-500 to-emerald-500' },
+              { icon: '📘', name: 'Facebook', color: 'from-mixxo-cyan-500 to-blue-500' },
+              { icon: '🐦', name: 'Twitter', color: 'from-mixxo-cyan-500 to-blue-400' }
+            ].map((social, index) => (
+              <button
+                key={index}
+                className={`w-12 h-12 bg-gradient-to-br ${social.color} rounded-xl flex items-center justify-center text-xl hover:scale-110 transition-transform duration-200 shadow-lg`}
+                title={social.name}
+              >
+                {social.icon}
+              </button>
+            ))}
+          </div>
+
+          {/* Newsletter */}
+          <div className="glass-dark backdrop-blur-md rounded-2xl p-6 border border-white/10">
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+              <span className="text-xl">📧</span>
+              Newsletter
+            </h3>
+            <p className="text-sm text-gray-400 mb-4">Recibe ofertas exclusivas</p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="tu@email.com"
+                className="flex-1 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-mixxo-pink-500 focus:ring-2 focus:ring-mixxo-pink-500/20"
+              />
+              <button className="bg-gradient-mixxo px-4 py-2 rounded-xl font-bold hover:shadow-mixxo transition-shadow">
+                →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Categorías */}
+        <div>
+          <h4 className="font-black text-white mb-6 text-lg">Categorías</h4>
+          <ul className="space-y-3">
+            {[
+              { name: 'Tecnología', icon: '📱' },
+              { name: 'Hogar', icon: '🏠' },
+              { name: 'Deportes', icon: '⚽' },
+              { name: 'Moda', icon: '👕' },
+              { name: 'Libros', icon: '📚' },
+              { name: 'Salud', icon: '💊' }
+            ].map((cat, index) => (
+              <li key={index}>
+                <button 
+                  onClick={() => handleViewCatalog(cat.name.toLowerCase())} 
+                  className="text-gray-400 hover:text-white transition-colors font-medium flex items-center gap-2 group"
+                >
+                  <span className="text-lg group-hover:scale-125 transition-transform">{cat.icon}</span>
+                  {cat.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Ayuda */}
+        <div>
+          <h4 className="font-black text-white mb-6 text-lg">Ayuda</h4>
+          <ul className="space-y-3">
+            {[
+              { name: 'Envíos', icon: '🚚' },
+              { name: 'Devoluciones', icon: '↩️' },
+              { name: 'Garantías', icon: '🛡️' },
+              { name: 'Soporte', icon: '💬' },
+              { name: 'Políticas', icon: '📋' },
+              { name: 'Términos', icon: '📄' }
+            ].map((item, index) => (
+              <li key={index}>
+                <button className="text-gray-400 hover:text-white transition-colors font-medium flex items-center gap-2 group">
+                  <span className="group-hover:scale-125 transition-transform">{item.icon}</span>
+                  {item.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Contacto */}
+        <div>
+          <h4 className="font-black text-white mb-6 text-lg">Contacto</h4>
+          <div className="space-y-4">
+            <div className="glass-dark backdrop-blur-md rounded-xl p-4 border border-white/10">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-mixxo-pink-500 to-mixxo-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">📞</span>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Llámanos</div>
+                  <div className="font-bold text-white">+57 300 123 4567</div>
                 </div>
               </div>
             </div>
-            <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-              <p>&copy; 2025 TechStore. Todos los derechos reservados.</p>
+
+            <div className="glass-dark backdrop-blur-md rounded-xl p-4 border border-white/10">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-mixxo-cyan-500 to-mixxo-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">📧</span>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Email</div>
+                  <div className="font-bold text-white text-sm">hola@mixxo.com</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-dark backdrop-blur-md rounded-xl p-4 border border-white/10">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">📍</span>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Ubicación</div>
+                  <div className="font-bold text-white text-sm">Bogotá, Colombia</div>
+                </div>
+              </div>
             </div>
           </div>
-        </footer>
-      )}
+        </div>
+      </div>
+
+      {/* Payment Methods */}
+      <div className="border-t border-white/10 py-8">
+        <h4 className="font-bold text-white mb-4 text-center">Métodos de pago</h4>
+        <div className="flex flex-wrap justify-center gap-4">
+          {[
+            { name: 'Tarjetas', icon: '💳', color: 'from-mixxo-pink-500 to-mixxo-purple-500' },
+            { name: 'PSE', icon: '🏦', color: 'from-mixxo-cyan-500 to-blue-500' },
+            { name: 'Nequi', icon: '📱', color: 'from-purple-500 to-pink-500' },
+            { name: 'Efectivo', icon: '💵', color: 'from-green-500 to-emerald-500' }
+          ].map((method, index) => (
+            <div
+              key={index}
+              className={`glass-dark backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 flex items-center gap-2 hover:scale-105 transition-transform`}
+            >
+              <span className="text-2xl">{method.icon}</span>
+              <span className="font-bold text-white">{method.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom Bar */}
+      <div className="border-t border-white/10 py-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="text-gray-400 text-sm font-medium">
+            <p className="mb-1">&copy; 2025 mixxo. Todos los derechos reservados.</p>
+            <p className="text-xs">Diseñado con <span className="text-mixxo-pink-500">❤️</span> en Colombia</p>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <button className="text-gray-400 hover:text-white transition-colors text-sm font-medium">
+              Privacidad
+            </button>
+            <button className="text-gray-400 hover:text-white transition-colors text-sm font-medium">
+              Términos
+            </button>
+            <button className="text-gray-400 hover:text-white transition-colors text-sm font-medium">
+              Cookies
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+)}
     </div>
   );
 }
