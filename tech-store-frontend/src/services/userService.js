@@ -183,29 +183,49 @@ export const userService = {
   // ==================== PEDIDOS ====================
 
   async getUserOrders(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            id,
-            product_id,
-            quantity,
-            price,
-            subtotal
-          )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+  try {
+    console.log('📦 Cargando pedidos para user:', userId);
+    
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          id,
+          product_id,
+          product_name,
+          product_image,
+          quantity,
+          unit_price,
+          subtotal
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching orders:', error);
+    if (error) {
+      console.error('❌ Error en getUserOrders:', error);
       throw error;
     }
-  },
+
+    console.log('✅ Pedidos cargados:', data?.length || 0);
+    
+    // Transformar datos para compatibilidad
+    const ordersWithFormattedItems = (data || []).map(order => ({
+      ...order,
+      order_number: order.id, // Agregar order_number si no existe
+      order_items: (order.order_items || []).map(item => ({
+        ...item,
+        price: item.unit_price // Mapear unit_price a price para compatibilidad
+      }))
+    }));
+
+    return ordersWithFormattedItems;
+  } catch (error) {
+    console.error('❌ Error fetching orders:', error);
+    throw error;
+  }
+},
 
   async getOrderDetails(orderId, userId) {
     try {
