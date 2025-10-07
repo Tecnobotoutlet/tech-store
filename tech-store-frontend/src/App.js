@@ -214,7 +214,7 @@ const handleCloseProfile = () => {
       {/* Botón flotante de WhatsApp */}
 {currentView !== 'admin' && (
   <WhatsAppButton 
-    phoneNumber="573001234567"
+    phoneNumber="573144505320"
     message="Hola! Tengo una consulta sobre un producto"
     companyName="TechStore"
     position="right"
