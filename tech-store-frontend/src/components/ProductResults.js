@@ -1,135 +1,39 @@
+// src/components/ProductResults.js - Versión mixxo moderna
 import React, { useState } from 'react';
-import { Grid, List, Package, TrendingUp, Clock, Star } from 'lucide-react';
 import ProductCard from './ProductCard';
+import { Grid, List, Sparkles, AlertCircle } from 'lucide-react';
 
 const ProductResults = ({ 
   products, 
   filterStats, 
   searchTerm, 
   selectedCategories,
-  isLoading = false,
   onProductClick 
 }) => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
-  const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 12;
 
-  // Calcular productos para la página actual
-  const startIndex = (currentPage - 1) * productsPerPage;
-  const endIndex = startIndex + productsPerPage;
-  const currentProducts = products.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(products.length / productsPerPage);
-
-  // Generar páginas para la paginación
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    
-    return pages;
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(price);
-  };
-
-  const getFilterSummary = () => {
-    const parts = [];
-    
-    if (searchTerm) {
-      parts.push(`"${searchTerm}"`);
-    }
-    
-    if (selectedCategories.length > 0) {
-      if (selectedCategories.length === 1) {
-        parts.push(`en ${selectedCategories[0]}`);
-      } else {
-        parts.push(`en ${selectedCategories.length} categorías`);
-      }
-    }
-    
-    return parts.length > 0 ? parts.join(' ') : 'todos los productos';
-  };
-
-  // Componente para vista de lista
-  const ProductListItem = ({ product }) => (
-    <div 
-      onClick={() => onProductClick && onProductClick(product.id)}
-      className="bg-white rounded-lg shadow-md p-4 flex space-x-4 hover:shadow-lg transition-shadow cursor-pointer"
-    >
-      <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-              {product.name}
-            </h3>
-            <p className="text-sm text-blue-600 font-medium">{product.category}</p>
-            
-            <div className="flex items-center space-x-2 mt-2">
-              <div className="flex">
-                {[...Array(5)].map((_, index) => (
-                  <Star
-                    key={index}
-                    className={`w-4 h-4 ${
-                      index < Math.floor(product.rating)
-                        ? 'text-yellow-400 fill-current'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-gray-600">
-                {product.rating} ({product.reviews})
-              </span>
-            </div>
-          </div>
-          
-          <div className="text-right">
-            <div className="text-2xl font-bold text-gray-900">
-              {formatPrice(product.price)}
-            </div>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <div className="text-sm text-gray-500 line-through">
-                {formatPrice(product.originalPrice)}
-              </div>
-            )}
-            <div className={`text-sm font-medium mt-1 ${
-              product.inStock ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {product.inStock ? '✅ En stock' : '❌ Agotado'}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (isLoading) {
+  if (!products || products.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">Cargando productos...</span>
+      <div className="py-20">
+        <div className="max-w-md mx-auto text-center">
+          <div className="w-24 h-24 bg-gradient-mixxo rounded-full flex items-center justify-center mx-auto mb-6 opacity-20">
+            <AlertCircle className="w-12 h-12 text-white" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">
+            No encontramos productos
+          </h3>
+          <p className="text-gray-600 mb-6">
+            {searchTerm 
+              ? `No hay resultados para "${searchTerm}"`
+              : 'Intenta ajustar tus filtros de búsqueda'}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="btn-mixxo"
+          >
+            Limpiar Filtros
+          </button>
+        </div>
       </div>
     );
   }
@@ -137,179 +41,223 @@ const ProductResults = ({
   return (
     <div>
       {/* Header de resultados */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between">
-          <div className="mb-4 lg:mb-0">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Resultados de búsqueda
-            </h2>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <span className="flex items-center space-x-1">
-                <Package className="w-4 h-4" />
-                <span>
-                  {products.length} de {filterStats.total} productos {getFilterSummary()}
-                </span>
-              </span>
-              
-              {filterStats.price && (
-                <span className="flex items-center space-x-1">
-                  <TrendingUp className="w-4 h-4" />
-                  <span>
-                    Desde {formatPrice(filterStats.price.min)} hasta {formatPrice(filterStats.price.max)}
-                  </span>
-                </span>
-              )}
-            </div>
-          </div>
-          
-          {/* Controles de vista */}
-          <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-600">Vista:</span>
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-white shadow-sm text-blue-600'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                <Grid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-white shadow-sm text-blue-600'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {searchTerm ? (
+              <>Resultados para <span className="text-gradient-mixxo">"{searchTerm}"</span></>
+            ) : selectedCategories.length > 0 ? (
+              <>Categoría: <span className="text-gradient-mixxo">{selectedCategories.join(', ')}</span></>
+            ) : (
+              <>Todos los <span className="text-gradient-mixxo">Productos</span></>
+            )}
+          </h2>
+          <p className="text-gray-600 font-medium">
+            {products.length} {products.length === 1 ? 'producto encontrado' : 'productos encontrados'}
+          </p>
         </div>
 
-        {/* Estadísticas rápidas */}
-        {products.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-200">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {products.filter(p => p.isNew).length}
-              </div>
-              <div className="text-sm text-gray-600">Productos nuevos</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {products.filter(p => p.inStock).length}
-              </div>
-              <div className="text-sm text-gray-600">En stock</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {products.filter(p => p.rating >= 4.5).length}
-              </div>
-              <div className="text-sm text-gray-600">Mejor calificados</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {products.filter(p => p.discount > 0).length}
-              </div>
-              <div className="text-sm text-gray-600">Con descuento</div>
-            </div>
+        {/* Controles de vista */}
+        <div className="flex items-center gap-3">
+          <div className="glass-card rounded-xl p-1 flex gap-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-3 rounded-lg transition-all duration-200 ${
+                viewMode === 'grid'
+                  ? 'bg-gradient-mixxo text-white shadow-mixxo'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Vista en cuadrícula"
+            >
+              <Grid className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-3 rounded-lg transition-all duration-200 ${
+                viewMode === 'list'
+                  ? 'bg-gradient-mixxo text-white shadow-mixxo'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title="Vista en lista"
+            >
+              <List className="w-5 h-5" />
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Resultados */}
-      {products.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">
-            No se encontraron productos
-          </h3>
-          <p className="text-gray-500 mb-6">
-            Intenta ajustar tus filtros o buscar algo diferente
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <span className="text-sm text-gray-400">Sugerencias:</span>
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              Gaming
-            </button>
-            <span className="text-gray-300">•</span>
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              Smartphones
-            </button>
-            <span className="text-gray-300">•</span>
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              Laptops
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Grid de productos */}
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-              {currentProducts.map(product => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  onProductClick={onProductClick}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4 mb-8">
-              {currentProducts.map(product => (
-                <ProductListItem key={product.id} product={product} />
-              ))}
+      {/* Stats de filtros activos */}
+      {(searchTerm || selectedCategories.length > 0) && (
+        <div className="mb-6 flex flex-wrap gap-3">
+          {searchTerm && (
+            <div className="glass-mixxo px-4 py-2 rounded-full flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Búsqueda:</span>
+              <span className="text-sm font-bold text-mixxo-pink-500">{searchTerm}</span>
             </div>
           )}
+          {selectedCategories.map((category, index) => (
+            <div key={index} className="glass-card px-4 py-2 rounded-full flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Categoría:</span>
+              <span className="text-sm font-bold text-mixxo-cyan-500">{category}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
-          {/* Paginación */}
-          {totalPages > 1 && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  Mostrando {startIndex + 1}-{Math.min(endIndex, products.length)} de {products.length} productos
+      {/* Grid de productos */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-fade-in">
+          {products.map((product, index) => (
+            <div
+              key={product.id}
+              className="animate-slide-up"
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+              <ProductCard 
+                product={product} 
+                onProductClick={onProductClick}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        // Vista de lista
+        <div className="space-y-6 animate-fade-in">
+          {products.map((product, index) => (
+            <div
+              key={product.id}
+              onClick={() => onProductClick && onProductClick(product.id)}
+              className="glass-card rounded-2xl p-6 hover:shadow-mixxo-lg transition-all duration-300 cursor-pointer group animate-slide-up"
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Imagen */}
+                <div className="w-full md:w-48 h-48 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden flex-shrink-0">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
                 </div>
-                
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Anterior
-                  </button>
-                  
-                  {getPageNumbers().map(page => (
+
+                {/* Info */}
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <span className="text-xs font-bold text-mixxo-pink-500 bg-mixxo-pink-50 px-3 py-1 rounded-full">
+                        {product.categoryName || product.category}
+                      </span>
+                      {product.isNew && (
+                        <span className="ml-2 badge-new">
+                          <Sparkles className="w-3 h-3" />
+                          NUEVO
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-500 font-semibold">{product.brand}</span>
+                  </div>
+
+                  <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-gradient-mixxo transition-all">
+                    {product.name}
+                  </h3>
+
+                  <p className="text-gray-600 mb-4 line-clamp-2">
+                    {product.description || 'Sin descripción disponible'}
+                  </p>
+
+                  {/* Specs */}
+                  {product.specifications && product.specifications.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {product.specifications.slice(0, 4).map((spec, idx) => (
+                        <div key={idx} className="glass-mixxo px-3 py-1 rounded-full text-xs font-medium text-gray-700">
+                          {spec.label}: {spec.value}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Rating y precio */}
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex">
+                          {[...Array(5)].map((_, i) => (
+                            <svg
+                              key={i}
+                              className={`w-4 h-4 ${
+                                i < Math.floor(product.rating || 4)
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300'
+                              }`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                              />
+                            </svg>
+                          ))}
+                        </div>
+                        <span className="text-sm font-bold text-gray-900">
+                          {product.rating || 4}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          ({product.reviews || 0} reseñas)
+                        </span>
+                      </div>
+
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-bold text-gradient-mixxo">
+                          {new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP',
+                            minimumFractionDigits: 0
+                          }).format(product.price)}
+                        </span>
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <span className="text-sm text-gray-400 line-through">
+                            {new Intl.NumberFormat('es-CO', {
+                              style: 'currency',
+                              currency: 'COP',
+                              minimumFractionDigits: 0
+                            }).format(product.originalPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                     <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 text-sm font-medium rounded-md ${
-                        currentPage === page
-                          ? 'text-blue-600 bg-blue-50 border border-blue-300'
-                          : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Agregar al carrito
+                      }}
+                      className="btn-mixxo"
+                      disabled={!product.inStock}
                     >
-                      {page}
+                      {product.inStock ? 'Agregar' : 'Agotado'}
                     </button>
-                  ))}
-                  
-                  <button
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Siguiente
-                  </button>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-        </>
+          ))}
+        </div>
+      )}
+
+      {/* Mensaje de más productos */}
+      {products.length > 12 && (
+        <div className="text-center mt-12 py-8 glass-card rounded-2xl">
+          <p className="text-gray-600 mb-4">
+            Mostrando {products.length} productos
+          </p>
+          <button className="btn-outline-mixxo">
+            Cargar más productos
+          </button>
+        </div>
       )}
     </div>
   );

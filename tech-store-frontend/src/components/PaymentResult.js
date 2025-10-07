@@ -1,6 +1,7 @@
-// src/components/PaymentResult.js - Sin Router
+// src/components/PaymentResult.js - CORRECCIÓN Problema 2
 import React, { useState, useEffect } from 'react';
 import wompiService from '../services/wompiService';
+import { supabase } from '../supabaseClient'; // 🔥 AGREGADO
 import { 
   CheckCircle, 
   XCircle, 
@@ -20,83 +21,155 @@ const PaymentResult = ({
   onViewOrder, 
   type: propType
 }) => {
-  const [status, setStatus] = useState(propType || 'success');
+  const [status, setStatus] = useState(propType || 'pending');
   const [paymentData, setPaymentData] = useState(propPaymentData || null);
   const [emailSent, setEmailSent] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [verifying, setVerifying] = useState(true);
 
+  // 🔥 NUEVA FUNCIÓN: Actualizar estado en Supabase
+  const updateOrderStatus = async (orderId, wompiStatus, transactionId, reference) => {
+    try {
+      console.log('📝 Actualizando orden en Supabase:', {
+        orderId,
+        wompiStatus,
+        transactionId,
+        reference
+      });
 
-  // AGREGAR ESTE CÓDIGO COMPLETO:
-useEffect(() => {
-  const checkURLParams = async () => {
-    // Verificar si venimos de una redirección de pago
-    const urlParams = new URLSearchParams(window.location.search);
-    const transactionId = urlParams.get('id');
-    const reference = urlParams.get('reference');
-    
-    // Si hay parámetros en URL, verificar el pago
-    if (transactionId || localStorage.getItem('payment_transaction_id')) {
-      const txId = transactionId || localStorage.getItem('payment_transaction_id');
-      const ref = reference || localStorage.getItem('payment_reference');
-      
-      console.log('Verificando pago:', { txId, ref });
-      
-      try {
-        // Esperar 2 segundos para que Wompi procese
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Consultar estado
-        const result = await wompiService.getTransactionStatus(txId);
-        
-        console.log('Estado de transacción:', result);
-        
-        // Mapear estado
-        const mappedStatus = {
-          'APPROVED': 'success',
-          'DECLINED': 'error',
-          'ERROR': 'error',
-          'PENDING': 'pending',
-          'VOIDED': 'error'
-        }[result.status] || 'error';
-        
-        setStatus(mappedStatus);
-        setPaymentData({
-          reference: ref,
-          transactionId: txId,
-          amount: result.amount_in_cents / 100,
-          status: result.status
-        });
-        
-        // Limpiar localStorage
-        localStorage.removeItem('payment_reference');
-        localStorage.removeItem('payment_transaction_id');
-        localStorage.removeItem('order_id');
-        
-      } catch (error) {
-        console.error('Error verificando pago:', error);
-        setStatus('error');
-        setPaymentData({ reference: ref });
+      // Mapear estados de Wompi a estados de la BD
+      const statusMapping = {
+        'APPROVED': { status: 'confirmed', payment_status: 'paid' },
+        'DECLINED': { status: 'cancelled', payment_status: 'failed' },
+        'ERROR': { status: 'cancelled', payment_status: 'failed' },
+        'PENDING': { status: 'pending', payment_status: 'pending' },
+        'VOIDED': { status: 'cancelled', payment_status: 'failed' }
+      };
+
+      const newStatuses = statusMapping[wompiStatus] || { 
+        status: 'pending', 
+        payment_status: 'pending' 
+      };
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update({
+          ...newStatuses,
+          transaction_id: transactionId,
+          payment_reference: reference,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error actualizando orden:', error);
+        throw error;
       }
+
+      console.log('✅ Orden actualizada en Supabase:', data);
+      return data;
+
+    } catch (error) {
+      console.error('❌ Error en updateOrderStatus:', error);
+      // No lanzar error para no afectar la UX
+      return null;
     }
   };
-  
-  checkURLParams();
-}, []); // Este useEffect solo se ejecuta una vez al montar
+
+  // 🔥 MODIFICADO: useEffect que verifica el pago Y actualiza Supabase
+  useEffect(() => {
+    const checkURLParams = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const transactionId = urlParams.get('id');
+      const reference = urlParams.get('reference');
+      
+      // Obtener order_id del localStorage
+      const orderId = localStorage.getItem('order_id');
+      
+      if (transactionId || localStorage.getItem('payment_transaction_id')) {
+        const txId = transactionId || localStorage.getItem('payment_transaction_id');
+        const ref = reference || localStorage.getItem('payment_reference');
+        
+        console.log('🔍 Verificando pago:', { txId, ref, orderId });
+        
+        try {
+          setVerifying(true);
+          
+          // Esperar 2 segundos para que Wompi procese
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Consultar estado en Wompi
+          const result = await wompiService.getTransactionStatus(txId);
+          
+          console.log('📥 Estado de Wompi:', result);
+          
+          // 🔥 NUEVO: Actualizar estado en Supabase
+          if (orderId && result.status) {
+            await updateOrderStatus(orderId, result.status, txId, ref);
+          }
+          
+          // Mapear estado para la UI
+          const mappedStatus = {
+            'APPROVED': 'success',
+            'DECLINED': 'error',
+            'ERROR': 'error',
+            'PENDING': 'pending',
+            'VOIDED': 'error'
+          }[result.status] || 'error';
+          
+          setStatus(mappedStatus);
+          setPaymentData({
+            reference: ref,
+            transactionId: txId,
+            orderId: orderId,
+            amount: result.amount_in_cents / 100,
+            status: result.status
+          });
+          
+          // Enviar email si es exitoso
+          if (mappedStatus === 'success') {
+            setTimeout(() => setEmailSent(true), 2000);
+          }
+          
+          // Limpiar localStorage
+          localStorage.removeItem('payment_reference');
+          localStorage.removeItem('payment_transaction_id');
+          localStorage.removeItem('order_id');
+          
+        } catch (error) {
+          console.error('❌ Error verificando pago:', error);
+          setStatus('error');
+          setPaymentData({ 
+            reference: ref,
+            orderId: orderId 
+          });
+        } finally {
+          setVerifying(false);
+        }
+      } else {
+        setVerifying(false);
+      }
+    };
+    
+    checkURLParams();
+  }, []);
 
   useEffect(() => {
-  // Solo usar props si NO hay parámetros en URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const hasURLParams = urlParams.get('id') || urlParams.get('reference') || 
-                       localStorage.getItem('payment_transaction_id');
-  
-  if (!hasURLParams && propType && propPaymentData) {
-    setStatus(propType);
-    setPaymentData(propPaymentData);
-    if (propType === 'success') {
-      setTimeout(() => setEmailSent(true), 2000);
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasURLParams = urlParams.get('id') || urlParams.get('reference') || 
+                         localStorage.getItem('payment_transaction_id');
+    
+    if (!hasURLParams && propType && propPaymentData) {
+      setStatus(propType);
+      setPaymentData(propPaymentData);
+      setVerifying(false);
+      if (propType === 'success') {
+        setTimeout(() => setEmailSent(true), 2000);
+      }
     }
-  }
-}, [propType, propPaymentData]);
+  }, [propType, propPaymentData]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
@@ -158,19 +231,32 @@ useEffect(() => {
         };
       default:
         return {
-          icon: CheckCircle,
-          iconColor: 'text-green-600',
-          bgColor: 'bg-green-50',
-          borderColor: 'border-green-200',
-          title: '¡Pago exitoso!',
-          subtitle: 'Tu pedido ha sido procesado correctamente',
-          description: 'Recibirás un email de confirmación con todos los detalles de tu compra.'
+          icon: Clock,
+          iconColor: 'text-yellow-600',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          title: 'Verificando pago...',
+          subtitle: 'Un momento por favor',
+          description: 'Estamos confirmando tu pago.'
         };
     }
   };
 
   const statusConfig = getStatusConfig();
   const IconComponent = statusConfig.icon;
+
+  // 🔥 NUEVO: Mostrar spinner mientras verifica
+  if (verifying) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificando tu pago...</h2>
+          <p className="text-gray-600">Por favor espera un momento</p>
+        </div>
+      </div>
+    );
+  }
 
   // Success state with full details
   if (status === 'success' && paymentData?.items) {
