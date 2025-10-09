@@ -1,13 +1,10 @@
-// src/services/authService.js - Con Supabase Auth Real
+// src/services/authService.js - OPTIMIZADO
 import { supabase } from '../supabaseClient';
-
-
 
 export const authService = {
   // Registro
   async register(userData) {
     try {
-      // Registrar en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -22,7 +19,6 @@ export const authService = {
 
       if (authError) throw authError;
 
-      // Crear perfil en user_profiles
       if (authData.user) {
         const { error: profileError } = await supabase
           .from('user_profiles')
@@ -41,7 +37,6 @@ export const authService = {
           console.error('Error creating profile:', profileError);
         }
 
-        // Obtener perfil completo
         const { data: profile } = await supabase
           .from('user_profiles')
           .select('*')
@@ -70,7 +65,7 @@ export const authService = {
     }
   },
 
-  // Login
+  // Login - ✅ SIEMPRE CONSULTA EL ROL ACTUALIZADO
   async login(email, password) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -80,18 +75,24 @@ export const authService = {
 
       if (error) throw error;
 
-      // Obtener perfil del usuario
-      const { data: profile } = await supabase
+      // 🔥 CRÍTICO: Siempre consultar el perfil desde la BD
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
+
+      if (profileError) {
+        console.error('Error al obtener perfil:', profileError);
+      }
 
       // Actualizar last_login
       await supabase
         .from('user_profiles')
         .update({ last_login: new Date().toISOString() })
         .eq('id', data.user.id);
+
+      console.log('✅ Perfil obtenido:', profile); // Para debug
 
       return {
         user: {
@@ -100,7 +101,7 @@ export const authService = {
           firstName: profile?.first_name || '',
           lastName: profile?.last_name || '',
           phone: profile?.phone || '',
-          role: profile?.role || 'customer',
+          role: profile?.role || 'customer', // 🔥 Rol directo desde la BD
           emailVerified: data.user.email_confirmed_at !== null
         },
         token: data.session.access_token,
@@ -112,19 +113,25 @@ export const authService = {
     }
   },
 
-  // Verificar token
+  // Verificar token - ✅ SIEMPRE CONSULTA EL ROL ACTUALIZADO
   async verifyToken(token) {
     try {
       const { data: { user }, error } = await supabase.auth.getUser(token);
       
       if (error) throw error;
 
-      // Obtener perfil
-      const { data: profile } = await supabase
+      // 🔥 CRÍTICO: Siempre consultar el perfil ACTUALIZADO desde la BD
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', user.id)
         .single();
+
+      if (profileError) {
+        console.error('Error al obtener perfil:', profileError);
+      }
+
+      console.log('🔄 Perfil actualizado obtenido:', profile); // Para debug
 
       return {
         user: {
@@ -133,7 +140,7 @@ export const authService = {
           firstName: profile?.first_name || '',
           lastName: profile?.last_name || '',
           phone: profile?.phone || '',
-          role: profile?.role || 'customer',
+          role: profile?.role || 'customer', // 🔥 Rol ACTUALIZADO desde la BD
           emailVerified: user.email_confirmed_at !== null
         }
       };
