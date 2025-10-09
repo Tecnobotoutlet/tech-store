@@ -249,6 +249,7 @@ const AuthModal = () => {
           )}
 
           {/* LOGIN FORM */}
+           {/* LOGIN FORM */}
           {authModalType === 'login' && !showForgotPassword && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
@@ -330,6 +331,10 @@ const AuthModal = () => {
                   'Iniciar Sesión'
                 )}
               </button>
+            </form>
+          )}
+
+        
 
              
 
