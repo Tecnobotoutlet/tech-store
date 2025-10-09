@@ -331,14 +331,7 @@ const AuthModal = () => {
                 )}
               </button>
 
-              {/* Credenciales de prueba */}
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
-                <strong className="text-blue-800">Credenciales de prueba:</strong><br/>
-                <span className="text-blue-700">Email: admin@techstore.com</span><br/>
-                <span className="text-blue-700">Contraseña: admin123</span>
-              </div>
-            </form>
-          )}
+             
 
           {/* REGISTER FORM */}
           {authModalType === 'register' && !showForgotPassword && (
