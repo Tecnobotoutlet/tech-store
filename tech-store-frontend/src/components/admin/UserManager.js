@@ -1,29 +1,15 @@
-// src/components/admin/UserManager.js - Conectado a Supabase
+// src/components/admin/UserManager.js - CON REFRESH AUTOMÁTICO
 import React, { useState, useEffect } from 'react';
 import { 
-  Search, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  UserPlus, 
-  Mail, 
-  Phone, 
-  Calendar,
-  MapPin,
-  CreditCard,
-  ShoppingBag,
-  AlertCircle,
-  CheckCircle,
-  X,
-  Users,
-  UserCheck,
-  UserX,
-  Crown,
-  RefreshCw
+  Search, Eye, Edit, Trash2, Mail, Phone, Calendar,
+  CreditCard, ShoppingBag, AlertCircle, CheckCircle, X,
+  Users, UserCheck, UserX, Crown, RefreshCw
 } from 'lucide-react';
 import { userService } from '../../services/userService';
+import { useAuth } from '../../context/AuthContext'; // 🆕 Importar useAuth
 
 const UserManager = () => {
+  const { user: currentUser, refreshUser } = useAuth(); // 🆕 Obtener usuario actual y refreshUser
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -134,8 +120,19 @@ const UserManager = () => {
       if (modalType === 'edit') {
         await userService.updateUser(selectedUser.id, userForm);
         showNotification('Usuario actualizado exitosamente');
+        
+        // 🆕 SI ES EL USUARIO ACTUAL, REFRESCAR SUS DATOS
+        if (currentUser && selectedUser.id === currentUser.id) {
+          console.log('🔄 Actualizando datos del usuario logueado...');
+          const refreshResult = await refreshUser();
+          
+          if (refreshResult.success) {
+            showNotification('✅ Tus datos han sido actualizados. Los cambios se aplicaron automáticamente.', 'success');
+          } else {
+            showNotification('⚠️ Usuario actualizado. Por favor, cierra sesión y vuelve a iniciar para ver los cambios.', 'warning', 5000);
+          }
+        }
       } else {
-        // Crear usuario requiere permisos especiales de Supabase
         showNotification('La creación de usuarios desde el panel no está habilitada. Los usuarios se registran desde la app.', 'error');
         setSaving(false);
         return;
@@ -170,6 +167,13 @@ const UserManager = () => {
     try {
       await userService.updateUserStatus(userId, newStatus === 'active');
       showNotification(`Usuario ${newStatus === 'active' ? 'activado' : 'desactivado'} exitosamente`);
+      
+      // 🆕 SI ES EL USUARIO ACTUAL, REFRESCAR SUS DATOS
+      if (currentUser && userId === currentUser.id) {
+        await refreshUser();
+        showNotification('✅ Tu estado ha sido actualizado automáticamente.', 'info');
+      }
+      
       await loadUsers();
     } catch (err) {
       showNotification('Error al cambiar el estado del usuario', 'error');
@@ -253,7 +257,9 @@ const UserManager = () => {
       {/* Notification */}
       {notification && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 ${
-          notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+          notification.type === 'success' ? 'bg-green-500 text-white' : 
+          notification.type === 'warning' ? 'bg-yellow-500 text-white' :
+          'bg-red-500 text-white'
         }`}>
           {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
           {notification.message}
@@ -411,6 +417,10 @@ const UserManager = () => {
                             <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                               {user.firstName} {user.lastName}
                               {user.verified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                              {/* 🆕 Indicador de usuario actual */}
+                              {currentUser && user.id === currentUser.id && (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Tú</span>
+                              )}
                             </div>
                             <div className="text-sm text-gray-500">ID: {user.id.slice(0, 8)}...</div>
                           </div>
@@ -552,7 +562,7 @@ const UserManager = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal - Código continúa igual que antes... */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -641,6 +651,16 @@ const UserManager = () => {
 
               {modalType === 'edit' && (
                 <div className="space-y-4">
+                  {/* 🆕 Advertencia si estás editando tu propio usuario */}
+                  {currentUser && selectedUser && selectedUser.id === currentUser.id && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-yellow-800">
+                        <strong>Atención:</strong> Estás editando tu propio perfil. Los cambios se aplicarán automáticamente.
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
@@ -669,9 +689,7 @@ const UserManager = () => {
                     <input
                       type="email"
                       value={userForm.email}
-                      onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      placeholder="email@ejemplo.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
                       disabled
                     />
                     <p className="text-xs text-gray-500 mt-1">El email no se puede modificar</p>

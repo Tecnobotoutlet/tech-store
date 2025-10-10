@@ -1,22 +1,18 @@
-// src/context/AuthContext.js
+// src/context/AuthContext.js - CON REFRESH USER
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authService, getAuthToken, getCurrentUser } from '../services/authService';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Estados principales
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Estados de UI
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalType, setAuthModalType] = useState('login'); // 'login' | 'register'
+  const [authModalType, setAuthModalType] = useState('login');
   const [notification, setNotification] = useState(null);
 
-  // Función para limpiar datos de autenticación
   const clearAuthData = useCallback(() => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
@@ -24,22 +20,45 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   }, []);
 
-  // Función para mostrar notificaciones - MEMOIZADA
   const showNotification = useCallback((message, type = 'success', duration = 5000) => {
     setNotification({ message, type });
-    // Usar useRef o ID para evitar múltiples timeouts
     const timeoutId = setTimeout(() => setNotification(null), duration);
     return () => clearTimeout(timeoutId);
   }, []);
 
-  // LOGOUT - MEMOIZADO
+  // 🆕 FUNCIÓN PARA REFRESCAR DATOS DEL USUARIO
+  const refreshUser = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        clearAuthData();
+        return { success: false, error: 'No hay sesión activa' };
+      }
+
+      // Obtener datos actualizados del usuario
+      const result = await authService.verifyToken(token);
+      
+      // Actualizar localStorage y estado
+      localStorage.setItem('userData', JSON.stringify(result.user));
+      setUser(result.user);
+      
+      console.log('✅ Datos del usuario actualizados:', result.user);
+      
+      return { success: true, user: result.user };
+    } catch (error) {
+      console.error('Error al refrescar usuario:', error);
+      clearAuthData();
+      return { success: false, error: error.message };
+    }
+  }, [clearAuthData]);
+
   const logout = useCallback(() => {
     clearAuthData();
     setAuthModalOpen(false);
     showNotification('Sesión cerrada correctamente', 'info');
   }, [clearAuthData, showNotification]);
 
-  // Verificación inicial de autenticación - OPTIMIZADA
+  // Verificación inicial de autenticación
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -47,26 +66,25 @@ export const AuthProvider = ({ children }) => {
         const userData = getCurrentUser();
         
         if (token && userData) {
-          // Verificar si el token no ha expirado
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             const currentTime = Math.floor(Date.now() / 1000);
             
             if (payload.exp > currentTime) {
-              // Verificar token con el servidor
+              // 🔄 Siempre verificar con el servidor para obtener datos actualizados
               const result = await authService.verifyToken(token);
               setUser(result.user);
               setIsAuthenticated(true);
+              
+              // Actualizar localStorage con datos frescos
+              localStorage.setItem('userData', JSON.stringify(result.user));
             } else {
-              // Token expirado
               clearAuthData();
             }
           } catch (tokenError) {
-            // Token inválido
             clearAuthData();
           }
         } else {
-          // No hay datos de autenticación
           clearAuthData();
         }
       } catch (error) {
@@ -78,9 +96,19 @@ export const AuthProvider = ({ children }) => {
     };
 
     initializeAuth();
-  }, [clearAuthData]); // Solo se ejecuta una vez
+  }, [clearAuthData]);
 
-  // Listener para logout automático - MEMOIZADO
+  // 🆕 Listener para refrescar usuario desde otros componentes
+  useEffect(() => {
+    const handleRefreshUser = async () => {
+      await refreshUser();
+    };
+
+    window.addEventListener('auth:refresh', handleRefreshUser);
+    return () => window.removeEventListener('auth:refresh', handleRefreshUser);
+  }, [refreshUser]);
+
+  // Listener para logout automático
   useEffect(() => {
     const handleAutoLogout = () => {
       logout();
@@ -90,37 +118,35 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('auth:logout', handleAutoLogout);
   }, [logout]);
 
-  // LOGIN - MEMOIZADO
   const login = useCallback(async (email, password) => {
-  setLoading(true);
-  setError(null);
-  
-  try {
-    const result = await authService.login(email, password);
+    setLoading(true);
+    setError(null);
     
-    // IMPORTANTE: Guardar con el rol correcto
-    localStorage.setItem('authToken', result.token);
-    localStorage.setItem('userData', JSON.stringify(result.user));
-    
-    console.log('Usuario logueado:', result.user); // Para debug
-    
-    setUser(result.user);
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-    
-    showNotification(`¡Bienvenido ${result.user.firstName}!`, 'success');
-    
-    return { success: true, user: result.user };
-  } catch (error) {
-    const errorMessage = error.message || 'Error en el login';
-    setError(errorMessage);
-    showNotification(errorMessage, 'error');
-    return { success: false, error: errorMessage };
-  } finally {
-    setLoading(false);
-  }
-}, [showNotification]);
-  // REGISTRO - MEMOIZADO
+    try {
+      const result = await authService.login(email, password);
+      
+      localStorage.setItem('authToken', result.token);
+      localStorage.setItem('userData', JSON.stringify(result.user));
+      
+      console.log('Usuario logueado:', result.user);
+      
+      setUser(result.user);
+      setIsAuthenticated(true);
+      setAuthModalOpen(false);
+      
+      showNotification(`¡Bienvenido ${result.user.firstName}!`, 'success');
+      
+      return { success: true, user: result.user };
+    } catch (error) {
+      const errorMessage = error.message || 'Error en el login';
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  }, [showNotification]);
+
   const register = useCallback(async (userData) => {
     setLoading(true);
     setError(null);
@@ -128,11 +154,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const result = await authService.register(userData);
       
-      // Guardar datos en localStorage
       localStorage.setItem('authToken', result.token);
       localStorage.setItem('userData', JSON.stringify(result.user));
       
-      // Actualizar estado
       setUser(result.user);
       setIsAuthenticated(true);
       setAuthModalOpen(false);
@@ -150,7 +174,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, [showNotification]);
 
-  // ACTUALIZAR PERFIL - MEMOIZADO
   const updateProfile = useCallback(async (updateData) => {
     if (!user || !isAuthenticated) {
       throw new Error('Usuario no autenticado');
@@ -163,7 +186,6 @@ export const AuthProvider = ({ children }) => {
       const token = getAuthToken();
       const result = await authService.updateProfile(user.id, updateData, token);
       
-      // Actualizar usuario en estado y localStorage
       setUser(result.user);
       localStorage.setItem('userData', JSON.stringify(result.user));
       
@@ -180,7 +202,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, isAuthenticated, showNotification]);
 
-  // CAMBIAR CONTRASEÑA - MEMOIZADO
   const changePassword = useCallback(async (currentPassword, newPassword) => {
     if (!user || !isAuthenticated) {
       throw new Error('Usuario no autenticado');
@@ -206,7 +227,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, isAuthenticated, showNotification]);
 
-  // OBTENER ESTADÍSTICAS DEL USUARIO - MEMOIZADO
   const getUserStats = useCallback(async () => {
     if (!user || !isAuthenticated) {
       return null;
@@ -222,7 +242,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, isAuthenticated]);
 
-  // RECUPERAR CONTRASEÑA - MEMOIZADO
   const forgotPassword = useCallback(async (email) => {
     setLoading(true);
     setError(null);
@@ -241,7 +260,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, [showNotification]);
 
-  // FUNCIONES DE MODAL - MEMOIZADAS
   const openLoginModal = useCallback(() => {
     setAuthModalType('login');
     setAuthModalOpen(true);
@@ -269,7 +287,6 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   }, []);
 
-  // FUNCIONES DE UTILIDAD - MEMOIZADAS
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -283,24 +300,17 @@ export const AuthProvider = ({ children }) => {
     return true;
   }, [isAuthenticated, openLoginModal]);
 
-  // VERIFICAR SI ES ADMIN - MEMOIZADO
   const isAdmin = useMemo(() => user?.role === 'admin', [user]);
 
-  // CRÍTICO: Memoizar el objeto value para evitar re-renders
   const value = useMemo(() => ({
-    // Estados
     user,
     isAuthenticated,
     loading,
     error,
     notification,
     isAdmin,
-    
-    // Modal states
     authModalOpen,
     authModalType,
-    
-    // Funciones de autenticación
     login,
     register,
     logout,
@@ -308,20 +318,16 @@ export const AuthProvider = ({ children }) => {
     changePassword,
     getUserStats,
     forgotPassword,
-    
-    // Funciones de modal
+    refreshUser, // 🆕 Nueva función
     openLoginModal,
     openRegisterModal,
     closeAuthModal,
     switchToLogin,
     switchToRegister,
-    
-    // Funciones de utilidad
     clearError,
     requireAuth,
     showNotification
   }), [
-    // Estados
     user,
     isAuthenticated,
     loading,
@@ -330,8 +336,6 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     authModalOpen,
     authModalType,
-    
-    // Funciones
     login,
     register,
     logout,
@@ -339,6 +343,7 @@ export const AuthProvider = ({ children }) => {
     changePassword,
     getUserStats,
     forgotPassword,
+    refreshUser, // 🆕 Nueva función
     openLoginModal,
     openRegisterModal,
     closeAuthModal,
@@ -356,7 +361,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Hook personalizado
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -365,7 +369,6 @@ export const useAuth = () => {
   return context;
 };
 
-// HOC para componentes que requieren autenticación
 export const withAuth = (Component) => {
   return function AuthenticatedComponent(props) {
     const { isAuthenticated, loading, openLoginModal } = useAuth();

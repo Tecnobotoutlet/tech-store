@@ -19,6 +19,7 @@ import useProductFilters from './hooks/useProductFilters';
 import PWAHelper from './components/PWAHelper';
 import UserProfile from './components/UserProfile';
 import WhatsAppButton from './components/WhatsAppButton';
+import ProductCarousel from './components/ProductCarousel';
 
 // Componente interno que usa el contexto
 function AppContent() {
@@ -137,16 +138,16 @@ function AppContent() {
 
   const renderHomeView = () => (
   <main>
-    {/* Hero Section con diseño mixxo */}
-    <section className="relative bg-animated-gradient text-white py-32 overflow-hidden">
+    {/* Hero Section con Carrusel de Productos */}
+    <section className="relative bg-animated-gradient text-white py-20 overflow-hidden">
       {/* Elementos flotantes decorativos */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl float-element"></div>
       <div className="absolute bottom-20 right-10 w-40 h-40 bg-mixxo-cyan-bright/20 rounded-full blur-3xl float-element" style={{animationDelay: '2s'}}></div>
       <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-mixxo-purple-500/10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
       
-      <div className="relative container mx-auto px-4 text-center">
-        <div className="max-w-5xl mx-auto">
-          {/* Logo animado */}
+      <div className="relative container mx-auto px-4">
+        {/* Logo y título */}
+        <div className="max-w-5xl mx-auto text-center mb-12">
           <div className="mb-8 animate-scale-in">
             <h1 className="text-6xl md:text-8xl font-black mb-4 text-white drop-shadow-lg">
               mixxo
@@ -158,11 +159,11 @@ function AppContent() {
             </div>
           </div>
           
-          <p className="text-2xl md:text-3xl mb-12 text-white/90 max-w-3xl mx-auto font-medium leading-relaxed slide-in-bottom">
+          <p className="text-2xl md:text-3xl mb-8 text-white/90 max-w-3xl mx-auto font-medium leading-relaxed slide-in-bottom">
             Descubre productos increíbles con los mejores precios y la mejor calidad
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-5 justify-center slide-in-bottom" style={{animationDelay: '0.2s'}}>
+          <div className="flex flex-col sm:flex-row gap-5 justify-center slide-in-bottom mb-12" style={{animationDelay: '0.2s'}}>
             <button 
               onClick={() => handleViewCatalog()}
               className="group relative overflow-hidden bg-white text-mixxo-pink-500 px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-white/20 hover:scale-105"
@@ -185,6 +186,13 @@ function AppContent() {
             </button>
           </div>
         </div>
+
+        {/* 🎨 CARRUSEL DE PRODUCTOS */}
+        <ProductCarousel 
+          products={products}
+          onProductClick={handleViewProduct}
+          autoPlaySpeed={4000}
+        />
       </div>
     </section>
 

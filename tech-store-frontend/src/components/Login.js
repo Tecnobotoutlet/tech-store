@@ -53,7 +53,7 @@ const Login = ({ isOpen, onClose }) => {
               value={formData.email}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-              placeholder="admin@techstore.com"
+              placeholder="tu@email.com"
               required
             />
           </div>
@@ -68,7 +68,7 @@ const Login = ({ isOpen, onClose }) => {
               value={formData.password}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-              placeholder="admin123"
+              placeholder="••••••••"
               required
             />
           </div>
@@ -81,12 +81,6 @@ const Login = ({ isOpen, onClose }) => {
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </button>
         </form>
-
-        <div className="mt-4 p-3 bg-gray-100 rounded text-sm">
-          <strong>Credenciales de prueba:</strong><br/>
-          Email: admin@techstore.com<br/>
-          Contraseña: admin123
-        </div>
       </div>
     </div>
   );
