@@ -1,4 +1,4 @@
-// src/components/ProductCarousel.js - VERSIÓN CORREGIDA
+// src/components/ProductCarousel.js - SIN PANTALLA DE CARGA
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, ShoppingCart, Eye, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -12,10 +12,7 @@ const ProductCarousel = ({ products = [], onProductClick, autoPlaySpeed = 3000 }
 
   // Obtener productos aleatorios al montar
   useEffect(() => {
-    console.log('ProductCarousel - productos recibidos:', products);
-    
     if (!products || !Array.isArray(products) || products.length === 0) {
-      console.warn('ProductCarousel - No hay productos disponibles');
       setRandomProducts([]);
       return;
     }
@@ -25,11 +22,8 @@ const ProductCarousel = ({ products = [], onProductClick, autoPlaySpeed = 3000 }
       const availableProducts = products.filter(p => {
         return p && p.image && p.inStock && typeof p.id !== 'undefined';
       });
-      
-      console.log('Productos disponibles filtrados:', availableProducts.length);
 
       if (availableProducts.length === 0) {
-        console.warn('No hay productos con imagen y stock');
         setRandomProducts([]);
         return;
       }
@@ -38,7 +32,6 @@ const ProductCarousel = ({ products = [], onProductClick, autoPlaySpeed = 3000 }
       const shuffled = [...availableProducts].sort(() => Math.random() - 0.5);
       const selected = shuffled.slice(0, Math.min(12, shuffled.length));
       
-      console.log('Productos seleccionados para carrusel:', selected.length);
       setRandomProducts(selected);
     } catch (error) {
       console.error('Error al procesar productos:', error);
@@ -102,23 +95,12 @@ const ProductCarousel = ({ products = [], onProductClick, autoPlaySpeed = 3000 }
     }
   };
 
-  // Si no hay productos, mostrar mensaje
+  // 🔥 SI NO HAY PRODUCTOS, NO MOSTRAR NADA (sin mensaje de carga)
   if (!randomProducts || randomProducts.length === 0) {
-    return (
-      <div className="w-full py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center text-white">
-            <div className="inline-block animate-pulse">
-              <div className="spinner-mixxo mb-4"></div>
-              <p className="text-lg font-medium">Cargando productos...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return null; // No renderiza nada, simplemente oculta el carrusel
   }
 
-  // Calcular productos visibles (mostrar 4 en desktop, 2 en tablet, 1 en móvil)
+  // Calcular productos visibles
   const getVisibleProducts = () => {
     const result = [];
     for (let i = 0; i < 4; i++) {
