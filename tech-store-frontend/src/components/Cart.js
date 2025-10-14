@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { X, Plus, Minus, ShoppingBag, ArrowLeft, Trash2, Heart } from 'lucide-react';
+import MetaPixel from '../services/MetaPixel';
 
 const Cart = ({ isOpen, onClose, onCheckout }) => {
   const { 
@@ -27,23 +28,37 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
   };
 
   const handleQuantityChange = (cartId, newQuantity) => {
-    if (newQuantity >= 0) {
-      updateQuantity(cartId, newQuantity);
-    }
-  };
-
-  const handleCheckout = () => {
-    if (items.length === 0) {
-      alert('Tu carrito está vacío');
-      return;
+  if (newQuantity >= 0) {
+    // Encontrar el item actual
+    const currentItem = items.find(item => item.cartId === cartId);
+    
+    if (currentItem) {
+      const quantityDifference = newQuantity - currentItem.quantity;
+      
+      // 🎯 META PIXEL: Rastrear si están agregando más cantidad (no si están restando)
+      if (quantityDifference > 0) {
+        MetaPixel.trackAddToCart(currentItem, quantityDifference);
+      }
     }
     
-    onClose();
-    if (onCheckout) {
-      onCheckout();
-    }
-  };
+    updateQuantity(cartId, newQuantity);
+  }
+};
 
+  const handleCheckout = () => {
+  if (items.length === 0) {
+    alert('Tu carrito está vacío');
+    return;
+  }
+  
+  // 🎯 META PIXEL: Rastrear inicio de checkout
+  MetaPixel.trackInitiateCheckout(items, total);
+  
+  onClose();
+  if (onCheckout) {
+    onCheckout();
+  }
+};
   const calculateSavings = () => {
     return items.reduce((savings, item) => {
       if (item.originalPrice && item.originalPrice > item.price) {
