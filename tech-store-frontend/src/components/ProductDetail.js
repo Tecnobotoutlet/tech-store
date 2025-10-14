@@ -35,7 +35,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
   }
 }, [product]);
 
-  useEffect(() => {
+useEffect(() => {
     if (product?.variants && product.variants.length > 0) {
       const variantsByType = product.variants.reduce((acc, variant) => {
         if (!acc[variant.type]) {
@@ -44,47 +44,60 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
         acc[variant.type].push(variant);
         return acc;
       }, {});
-    
-useEffect(() => {
-  if (product) {
-    // Actualizar título de la página
-    document.title = `${product.name} - mixxo`;
-    
-    // Meta description
-    const metaDescription = document.querySelector('meta[name="description"]') || document.createElement('meta');
-    metaDescription.setAttribute('name', 'description');
-    metaDescription.content = product.description?.substring(0, 160) || '';
-    if (!document.querySelector('meta[name="description"]')) {
-      document.head.appendChild(metaDescription);
+      
+      const initialSelection = {};
+      Object.keys(variantsByType).forEach(type => {
+        const firstAvailable = variantsByType[type].find(v => v.available && v.stock > 0);
+        if (firstAvailable) {
+          initialSelection[type] = firstAvailable;
+        }
+      });
+      
+      setSelectedVariants(initialSelection);
     }
+  }, [product]);
 
-    // Open Graph para Facebook/Instagram
-    updateMetaTag('og:title', product.name);
-    updateMetaTag('og:description', product.description);
-    updateMetaTag('og:image', product.images?.[0] || product.image);
-    updateMetaTag('og:url', window.location.href);
-    updateMetaTag('og:type', 'product');
-    updateMetaTag('product:price:amount', product.price);
-    updateMetaTag('product:price:currency', 'COP');
+  // ✅ NUEVO useEffect para Meta Tags - COMPLETAMENTE SEPARADO
+  useEffect(() => {
+    if (product) {
+      // Actualizar título de la página
+      document.title = `${product.name} - mixxo`;
+      
+      // Meta description
+      const metaDescription = document.querySelector('meta[name="description"]') || document.createElement('meta');
+      metaDescription.setAttribute('name', 'description');
+      metaDescription.content = product.description?.substring(0, 160) || '';
+      if (!document.querySelector('meta[name="description"]')) {
+        document.head.appendChild(metaDescription);
+      }
 
-    // Twitter Cards
-    updateMetaTag('twitter:card', 'summary_large_image', 'name');
-    updateMetaTag('twitter:title', product.name, 'name');
-    updateMetaTag('twitter:description', product.description, 'name');
-    updateMetaTag('twitter:image', product.images?.[0] || product.image, 'name');
-  }
-}, [product]);
+      // Open Graph para Facebook/Instagram
+      updateMetaTag('og:title', product.name);
+      updateMetaTag('og:description', product.description);
+      updateMetaTag('og:image', product.images?.[0] || product.image);
+      updateMetaTag('og:url', window.location.href);
+      updateMetaTag('og:type', 'product');
+      updateMetaTag('product:price:amount', product.price);
+      updateMetaTag('product:price:currency', 'COP');
 
-const updateMetaTag = (property, content, attributeName = 'property') => {
-  let meta = document.querySelector(`meta[${attributeName}="${property}"]`);
-  if (!meta) {
-    meta = document.createElement('meta');
-    meta.setAttribute(attributeName, property);
-    document.head.appendChild(meta);
-  }
-  meta.content = content;
-};
+      // Twitter Cards
+      updateMetaTag('twitter:card', 'summary_large_image', 'name');
+      updateMetaTag('twitter:title', product.name, 'name');
+      updateMetaTag('twitter:description', product.description, 'name');
+      updateMetaTag('twitter:image', product.images?.[0] || product.image, 'name');
+    }
+  }, [product]);
 
+  // ✅ Función helper FUERA de los useEffect
+  const updateMetaTag = (property, content, attributeName = 'property') => {
+    let meta = document.querySelector(`meta[${attributeName}="${property}"]`);
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute(attributeName, property);
+      document.head.appendChild(meta);
+    }
+    meta.content = content || '';
+  };
       
       const initialSelection = {};
       Object.keys(variantsByType).forEach(type => {
