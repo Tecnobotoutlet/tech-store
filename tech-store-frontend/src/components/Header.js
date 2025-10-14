@@ -79,7 +79,7 @@ const Header = ({
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
 
-  / 🎯 NUEVA FUNCIÓN: Manejar búsqueda con tracking
+  // 🎯 NUEVA FUNCIÓN: Manejar búsqueda con tracking
   const handleSearch = (value) => {
     // Llamar a la función de búsqueda original
     if (onSearch) {
