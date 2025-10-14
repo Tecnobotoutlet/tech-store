@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { slugify, generateUniqueSlug } from '../../utils/slugify';
+import { supabase } from '../../supabaseClient';
 
 const IsolatedProductForm = () => {
   // Estado completamente local, sin contextos
@@ -19,12 +21,54 @@ const IsolatedProductForm = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Form data:', formData);
-    alert('Formulario enviado (revisar consola)');
-  };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  try {
+    // Generar slug
+    const productSlug = formData.slug || slugify(formData.name);
+    
+    // Verificar que el slug sea único
+    const { data: existingProduct, error: checkError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('slug', productSlug)
+      .neq('id', formData.id || 0)
+      .single();
+    
+    if (existingProduct) {
+      alert('Ya existe un producto con este nombre. El slug debe ser único.');
+      return;
+    }
 
+    const productData = {
+      ...formData,
+      slug: productSlug,
+      price: parseFloat(formData.price),
+      stock: parseInt(formData.stock)
+    };
+
+    // Guardar en Supabase
+    const { data, error } = await supabase
+      .from('products')
+      .insert([productData])
+      .select();
+
+    if (error) throw error;
+
+    console.log('Producto guardado:', data);
+    alert('¡Producto creado exitosamente!');
+    
+    // Limpiar formulario
+    setFormData({
+      name: '', description: '', price: '', category: '', brand: '', stock: '', slug: ''
+    });
+  } catch (error) {
+    console.error('Error al guardar producto:', error);
+    alert('Error al guardar el producto: ' + error.message);
+  }
+};
+  
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Formulario Aislado - Prueba</h1>
@@ -82,6 +126,21 @@ const IsolatedProductForm = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
+
+          <div>
+  <label className="block text-sm font-medium mb-2">
+    URL Slug (opcional)
+    <span className="text-xs text-gray-500 ml-2">Se genera automáticamente si se deja vacío</span>
+  </label>
+  <input
+    type="text"
+    name="slug"
+    value={formData.slug}
+    onChange={handleChange}
+    placeholder="iphone-15-pro"
+    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+  />
+</div>
 
           <div>
             <label className="block text-sm font-medium mb-2">Stock</label>

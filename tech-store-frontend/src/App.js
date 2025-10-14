@@ -115,9 +115,7 @@ function AppContent() {
     setCurrentView('product');
   }
 };
-    setSelectedProductId(productId);
-    setCurrentView('product');
-  };
+    
 
   const handleBackFromProduct = () => {
     setCurrentView('catalog');
