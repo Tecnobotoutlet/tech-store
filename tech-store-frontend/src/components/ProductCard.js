@@ -41,17 +41,18 @@ const ProductCard = ({ product, onProductClick, className = "" }) => {
   };
 
   const handleQuickViewClick = (e) => {
-    e.stopPropagation();
-    if (onProductClick) {
-      onProductClick(product.id);
-    }
-  };
+  e.stopPropagation();
+  if (onProductClick) {
+    onProductClick(product.id, product.slug);
+  }
+};
 
   const handleProductClick = () => {
-    if (onProductClick) {
-      onProductClick(product.id);
-    }
-  };
+  if (onProductClick) {
+    // Pasar tanto el ID como el slug
+    onProductClick(product.id, product.slug);
+  }
+};
 
   const isProductInWishlist = isInWishlist && isInWishlist(product.id);
 
