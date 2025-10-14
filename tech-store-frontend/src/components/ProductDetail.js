@@ -25,17 +25,17 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
   const reviews = productReviews[productId] || [];
 
   useEffect(() => {
-  if (product) {
-    MetaPixel.trackViewContent({
-      id: product.id,
-      name: product.name,
-      category: product.categoryName || product.category,
-      price: product.price
-    });
-  }
-}, [product]);
+    if (product) {
+      MetaPixel.trackViewContent({
+        id: product.id,
+        name: product.name,
+        category: product.categoryName || product.category,
+        price: product.price
+      });
+    }
+  }, [product]);
 
-useEffect(() => {
+  useEffect(() => {
     if (product?.variants && product.variants.length > 0) {
       const variantsByType = product.variants.reduce((acc, variant) => {
         if (!acc[variant.type]) {
@@ -57,7 +57,6 @@ useEffect(() => {
     }
   }, [product]);
 
-  // ✅ NUEVO useEffect para Meta Tags - COMPLETAMENTE SEPARADO
   useEffect(() => {
     if (product) {
       // Actualizar título de la página
@@ -88,7 +87,6 @@ useEffect(() => {
     }
   }, [product]);
 
-  // ✅ Función helper FUERA de los useEffect
   const updateMetaTag = (property, content, attributeName = 'property') => {
     let meta = document.querySelector(`meta[${attributeName}="${property}"]`);
     if (!meta) {
@@ -98,18 +96,6 @@ useEffect(() => {
     }
     meta.content = content || '';
   };
-      
-      const initialSelection = {};
-      Object.keys(variantsByType).forEach(type => {
-        const firstAvailable = variantsByType[type].find(v => v.available && v.stock > 0);
-        if (firstAvailable) {
-          initialSelection[type] = firstAvailable;
-        }
-      });
-      
-      setSelectedVariants(initialSelection);
-    }
-  }, [product]);
 
   if (!product) {
     return (
@@ -192,45 +178,45 @@ useEffect(() => {
   };
 
   const handleAddToCart = async () => {
-  const variantTypes = getVariantTypes();
-  const requiredTypes = Object.keys(variantTypes);
-  
-  if (requiredTypes.length > 0) {
-    const missingTypes = requiredTypes.filter(type => !selectedVariants[type]);
+    const variantTypes = getVariantTypes();
+    const requiredTypes = Object.keys(variantTypes);
     
-    if (missingTypes.length > 0) {
-      const typeLabels = {
-        'color': 'color',
-        'size': 'talla',
-        'storage': 'almacenamiento',
-        'ram': 'memoria RAM'
-      };
+    if (requiredTypes.length > 0) {
+      const missingTypes = requiredTypes.filter(type => !selectedVariants[type]);
       
-      const missingLabels = missingTypes.map(t => typeLabels[t] || t).join(', ');
-      setVariantError(`Por favor selecciona: ${missingLabels}`);
-      return;
+      if (missingTypes.length > 0) {
+        const typeLabels = {
+          'color': 'color',
+          'size': 'talla',
+          'storage': 'almacenamiento',
+          'ram': 'memoria RAM'
+        };
+        
+        const missingLabels = missingTypes.map(t => typeLabels[t] || t).join(', ');
+        setVariantError(`Por favor selecciona: ${missingLabels}`);
+        return;
+      }
     }
-  }
-  
-  setIsAddingToCart(true);
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  const productWithVariants = {
-    ...product,
-    selectedVariants: Object.values(selectedVariants)
+    
+    setIsAddingToCart(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const productWithVariants = {
+      ...product,
+      selectedVariants: Object.values(selectedVariants)
+    };
+    
+    for (let i = 0; i < quantity; i++) {
+      addToCart(productWithVariants);
+    }
+    
+    MetaPixel.trackAddToCart(product, quantity);
+    
+    setIsAddingToCart(false);
+    setShowNotification(true);
+    setTimeout(() => setShowNotification(false), 3000);
   };
-  
-  for (let i = 0; i < quantity; i++) {
-    addToCart(productWithVariants);
-  }
-  
-  // 🎯 META PIXEL: Rastrear agregar al carrito
-  MetaPixel.trackAddToCart(product, quantity);
-  
-  setIsAddingToCart(false);
-  setShowNotification(true);
-  setTimeout(() => setShowNotification(false), 3000);
-};
+
   const handleWishlistToggle = () => {
     toggleWishlist(product);
   };
