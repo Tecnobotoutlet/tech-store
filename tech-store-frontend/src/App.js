@@ -107,10 +107,11 @@ function AppContent() {
   };
 
   const handleViewProduct = (productId, productSlug) => {
-  // Si se proporciona slug, navegar a la URL con slug
-  if (productSlug && window.location.pathname !== '/') {
+  // Navegar usando React Router si tenemos slug
+  if (productSlug) {
     window.location.href = `/producto/${productSlug}`;
   } else {
+    // Fallback para productos sin slug
     setSelectedProductId(productId);
     setCurrentView('product');
   }
