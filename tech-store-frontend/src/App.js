@@ -21,6 +21,8 @@ import UserProfile from './components/UserProfile';
 import WhatsAppButton from './components/WhatsAppButton';
 import ProductCarousel from './components/ProductCarousel';
 
+
+
 // Componente interno que usa el contexto
 function AppContent() {
   const { 
@@ -700,6 +702,11 @@ function AppContent() {
 }
 
 function App() {
+
+  useEffect(() => {
+    MetaPixel.init();
+  }, []);
+  
   return (
     <AuthProvider>
       <CategoryProvider>
