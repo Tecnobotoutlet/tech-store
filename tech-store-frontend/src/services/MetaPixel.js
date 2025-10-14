@@ -6,9 +6,6 @@ class MetaPixelService {
     this.isInitialized = false;
   }
 
-  /**
-   * Inicializa Meta Pixel
-   */
   init() {
     if (!this.pixelId) {
       console.warn('⚠️ Meta Pixel ID no configurado. Agrega REACT_APP_META_PIXEL_ID en tu .env');
@@ -21,8 +18,7 @@ class MetaPixelService {
     }
 
     try {
-      // Cargar script de Meta Pixel
-      !function(f,b,e,v,n,t,s) {
+      (function(f,b,e,v,n,t,s) {
         if(f.fbq) return;
         n=f.fbq=function(){
           n.callMethod ?
@@ -30,15 +26,15 @@ class MetaPixelService {
         };
         if(!f._fbq) f._fbq=n;
         n.push=n;
-        n.loaded=!0;
+        n.loaded=true;
         n.version='2.0';
         n.queue=[];
         t=b.createElement(e);
-        t.async=!0;
+        t.async=true;
         t.src=v;
         s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)
-      }(window, document,'script',
+        s.parentNode.insertBefore(t,s);
+      })(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
 
       window.fbq('init', this.pixelId);
@@ -51,9 +47,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Vista de contenido (producto)
-   */
   trackViewContent(product) {
     if (!this.isInitialized) return;
 
@@ -72,9 +65,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Agregar al carrito
-   */
   trackAddToCart(product, quantity = 1) {
     if (!this.isInitialized) return;
 
@@ -94,9 +84,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Iniciar checkout
-   */
   trackInitiateCheckout(cartItems, totalValue) {
     if (!this.isInitialized) return;
 
@@ -122,9 +109,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Agregar información de pago
-   */
   trackAddPaymentInfo(paymentMethod) {
     if (!this.isInitialized) return;
 
@@ -138,9 +122,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Compra completada
-   */
   trackPurchase(orderData) {
     if (!this.isInitialized) return;
 
@@ -167,9 +148,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Búsqueda
-   */
   trackSearch(searchQuery) {
     if (!this.isInitialized) return;
 
@@ -183,9 +161,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Ver categoría
-   */
   trackViewCategory(categoryName) {
     if (!this.isInitialized) return;
 
@@ -199,9 +174,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Contacto (WhatsApp)
-   */
   trackContact(method = 'whatsapp') {
     if (!this.isInitialized) return;
 
@@ -215,9 +187,6 @@ class MetaPixelService {
     }
   }
 
-  /**
-   * Evento: Lead (registro)
-   */
   trackLead(leadType = 'registration') {
     if (!this.isInitialized) return;
 
@@ -232,6 +201,5 @@ class MetaPixelService {
   }
 }
 
-// Exportar instancia única (Singleton)
 const MetaPixel = new MetaPixelService();
 export default MetaPixel;
