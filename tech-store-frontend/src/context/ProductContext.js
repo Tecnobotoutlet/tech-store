@@ -69,6 +69,7 @@ export const ProductProvider = ({ children }) => {
     return {
       id: parseInt(product.id),
       name: product.name,
+      slug: product.slug,
       description: product.description,
       price: parseFloat(product.price),
       originalPrice: product.original_price ? parseFloat(product.original_price) : null,
