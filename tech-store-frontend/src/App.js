@@ -20,6 +20,7 @@ import PWAHelper from './components/PWAHelper';
 import UserProfile from './components/UserProfile';
 import WhatsAppButton from './components/WhatsAppButton';
 import ProductCarousel from './components/ProductCarousel';
+import MetaPixel from './services/MetaPixel';
 
 
 
