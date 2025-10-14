@@ -53,6 +53,9 @@ const Cart = ({ isOpen, onClose, onCheckout }) => {
   
   // 🎯 META PIXEL: Rastrear inicio de checkout
   MetaPixel.trackInitiateCheckout(items, total);
+
+  // 🎯 NUEVO: Guardar items para el tracking de Purchase
+  localStorage.setItem('cart_items', JSON.stringify(items));
   
   onClose();
   if (onCheckout) {
