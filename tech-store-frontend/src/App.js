@@ -727,8 +727,9 @@ function ProductDetailRoute() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { products } = useProducts();
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   
-  // Buscar producto por slug o ID
   const product = products.find(p => p.slug === slug || p.id.toString() === slug);
   
   if (!product) {
@@ -747,18 +748,44 @@ function ProductDetailRoute() {
   return (
     <>
       <Header 
-        onCartClick={() => {}}
+        onCartClick={() => setIsCartOpen(true)}
         onHomeClick={() => navigate('/')}
+        onAdminClick={() => navigate('/admin')}
+        onCategoryClick={(category) => navigate(`/?categoria=${category}`)}
+        onOffersClick={() => navigate('/?seccion=ofertas')}
+        onNewProductsClick={() => navigate('/?seccion=nuevos')}
+        onBrandsClick={() => navigate('/')}
+        onSupportClick={() => alert('Soporte próximamente')}
+        onProfileClick={() => setShowUserProfile(true)}
       />
+      
+      <Cart
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        onCheckout={() => navigate('/checkout')}
+      />
+      
+      {showUserProfile && (
+        <UserProfile onClose={() => setShowUserProfile(false)} />
+      )}
+      
       <ProductDetail 
         productId={product.id}
         onBack={() => navigate(-1)}
-        onProductClick={(id, slug) => navigate(`/producto/${slug || id}`)}
+        onProductClick={(id, slug) => {
+          if (slug) {
+            navigate(`/producto/${slug}`);
+          }
+        }}
+      />
+      
+      <WhatsAppButton 
+        phoneNumber="573144505320"
+        companyName="TechStore"
       />
     </>
   );
 }
-
 function App() {
   useEffect(() => {
     MetaPixel.init();
