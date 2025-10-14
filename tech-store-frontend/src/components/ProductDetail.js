@@ -8,6 +8,7 @@ import ProductSpecs from './ProductSpecs';
 import ProductReviews from './ProductReviews';
 import RelatedProducts from './RelatedProducts';
 import { productReviews } from '../data/products';
+import MetaPixel from '../services/MetaPixel';
 
 const ProductDetail = ({ productId, onBack, onProductClick }) => {
   const [selectedVariants, setSelectedVariants] = useState({});
@@ -22,6 +23,17 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
 
   const product = getProductById(productId);
   const reviews = productReviews[productId] || [];
+
+  useEffect(() => {
+  if (product) {
+    MetaPixel.trackViewContent({
+      id: product.id,
+      name: product.name,
+      category: product.categoryName || product.category,
+      price: product.price
+    });
+  }
+}, [product]);
 
   useEffect(() => {
     if (product?.variants && product.variants.length > 0) {
@@ -126,43 +138,45 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
   };
 
   const handleAddToCart = async () => {
-    const variantTypes = getVariantTypes();
-    const requiredTypes = Object.keys(variantTypes);
+  const variantTypes = getVariantTypes();
+  const requiredTypes = Object.keys(variantTypes);
+  
+  if (requiredTypes.length > 0) {
+    const missingTypes = requiredTypes.filter(type => !selectedVariants[type]);
     
-    if (requiredTypes.length > 0) {
-      const missingTypes = requiredTypes.filter(type => !selectedVariants[type]);
+    if (missingTypes.length > 0) {
+      const typeLabels = {
+        'color': 'color',
+        'size': 'talla',
+        'storage': 'almacenamiento',
+        'ram': 'memoria RAM'
+      };
       
-      if (missingTypes.length > 0) {
-        const typeLabels = {
-          'color': 'color',
-          'size': 'talla',
-          'storage': 'almacenamiento',
-          'ram': 'memoria RAM'
-        };
-        
-        const missingLabels = missingTypes.map(t => typeLabels[t] || t).join(', ');
-        setVariantError(`Por favor selecciona: ${missingLabels}`);
-        return;
-      }
+      const missingLabels = missingTypes.map(t => typeLabels[t] || t).join(', ');
+      setVariantError(`Por favor selecciona: ${missingLabels}`);
+      return;
     }
-    
-    setIsAddingToCart(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const productWithVariants = {
-      ...product,
-      selectedVariants: Object.values(selectedVariants)
-    };
-    
-    for (let i = 0; i < quantity; i++) {
-      addToCart(productWithVariants);
-    }
-    
-    setIsAddingToCart(false);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
+  }
+  
+  setIsAddingToCart(true);
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  const productWithVariants = {
+    ...product,
+    selectedVariants: Object.values(selectedVariants)
   };
-
+  
+  for (let i = 0; i < quantity; i++) {
+    addToCart(productWithVariants);
+  }
+  
+  // 🎯 META PIXEL: Rastrear agregar al carrito
+  MetaPixel.trackAddToCart(product, quantity);
+  
+  setIsAddingToCart(false);
+  setShowNotification(true);
+  setTimeout(() => setShowNotification(false), 3000);
+};
   const handleWishlistToggle = () => {
     toggleWishlist(product);
   };
