@@ -10,6 +10,7 @@ import CashOnDeliveryForm from './CashOnDeliveryForm';
 import wompiService from '../services/wompiService';
 import { supabase } from '../supabaseClient';
 import { isEligibleForCOD, validateCODEligibility } from '../utils/cityValidator';
+import MetaPixel from '../services/MetaPixel';
 import { 
   ArrowLeft, 
   User, 
@@ -774,12 +775,15 @@ const Checkout = ({ onBack, onPaymentSuccess, onPaymentError }) => {
 
       {/* 🔥 ACTUALIZADO: Pasar props de COD */}
       <PaymentMethodSelector 
-        selectedMethod={formData.paymentMethod}
-        onMethodChange={(method) => setFormData(prev => ({ ...prev, paymentMethod: method }))}
-        isEligibleForCOD={codEligibility.eligible}
-        shippingCity={formData.city}
-      />
-
+  selectedMethod={formData.paymentMethod}
+  onMethodChange={(method) => {
+    setFormData(prev => ({ ...prev, paymentMethod: method }));
+    // 🎯 META PIXEL: Rastrear selección de método de pago
+    MetaPixel.trackAddPaymentInfo(method);
+  }}
+  isEligibleForCOD={codEligibility.eligible}
+  shippingCity={formData.city}
+/>
       {/* Formulario según método seleccionado */}
       <div className="mt-6">
         {formData.paymentMethod === 'card' && (
