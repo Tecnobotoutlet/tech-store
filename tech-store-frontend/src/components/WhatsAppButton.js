@@ -5,6 +5,7 @@ import { useProducts } from '../context/ProductContext';
 import { useCategories } from '../context/CategoryContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import MetaPixel from '../services/MetaPixel'; 
 
 const WhatsAppButton = ({ 
   phoneNumber = '573001234567',
@@ -73,6 +74,9 @@ const WhatsAppButton = ({
   }, []);
 
   const handleWhatsAppClick = (customMessage = null) => {
+    // 🎯 META PIXEL: Rastrear contacto por WhatsApp
+    MetaPixel.trackContact('whatsapp');
+    
     const cleanNumber = phoneNumber.replace(/\D/g, '');
     let message = customMessage || 'Hola! Tengo una consulta';
     
@@ -112,7 +116,6 @@ const WhatsAppButton = ({
     resetChat();
     setIsExpanded(false);
   };
-
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
     setShowPulse(false);

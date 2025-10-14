@@ -44,6 +44,47 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
         acc[variant.type].push(variant);
         return acc;
       }, {});
+    
+useEffect(() => {
+  if (product) {
+    // Actualizar título de la página
+    document.title = `${product.name} - mixxo`;
+    
+    // Meta description
+    const metaDescription = document.querySelector('meta[name="description"]') || document.createElement('meta');
+    metaDescription.setAttribute('name', 'description');
+    metaDescription.content = product.description?.substring(0, 160) || '';
+    if (!document.querySelector('meta[name="description"]')) {
+      document.head.appendChild(metaDescription);
+    }
+
+    // Open Graph para Facebook/Instagram
+    updateMetaTag('og:title', product.name);
+    updateMetaTag('og:description', product.description);
+    updateMetaTag('og:image', product.images?.[0] || product.image);
+    updateMetaTag('og:url', window.location.href);
+    updateMetaTag('og:type', 'product');
+    updateMetaTag('product:price:amount', product.price);
+    updateMetaTag('product:price:currency', 'COP');
+
+    // Twitter Cards
+    updateMetaTag('twitter:card', 'summary_large_image', 'name');
+    updateMetaTag('twitter:title', product.name, 'name');
+    updateMetaTag('twitter:description', product.description, 'name');
+    updateMetaTag('twitter:image', product.images?.[0] || product.image, 'name');
+  }
+}, [product]);
+
+const updateMetaTag = (property, content, attributeName = 'property') => {
+  let meta = document.querySelector(`meta[${attributeName}="${property}"]`);
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute(attributeName, property);
+    document.head.appendChild(meta);
+  }
+  meta.content = content;
+};
+
       
       const initialSelection = {};
       Object.keys(variantsByType).forEach(type => {

@@ -21,6 +21,7 @@ import UserProfile from './components/UserProfile';
 import WhatsAppButton from './components/WhatsAppButton';
 import ProductCarousel from './components/ProductCarousel';
 import MetaPixel from './services/MetaPixel';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 
 
 
@@ -105,7 +106,15 @@ function AppContent() {
     setSelectedProductId(null);
   };
 
-  const handleViewProduct = (productId) => {
+  const handleViewProduct = (productId, productSlug) => {
+  // Si se proporciona slug, navegar a la URL con slug
+  if (productSlug && window.location.pathname !== '/') {
+    window.location.href = `/producto/${productSlug}`;
+  } else {
+    setSelectedProductId(productId);
+    setCurrentView('product');
+  }
+};
     setSelectedProductId(productId);
     setCurrentView('product');
   };
@@ -702,8 +711,56 @@ function AppContent() {
   );
 }
 
-function App() {
+function AppWithRouter() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<AppContent />} />
+        <Route path="/producto/:slug" element={<ProductDetailRoute />} />
+        <Route path="*" element={<AppContent />} />
+      </Routes>
+    </Router>
+  );
+}
 
+// NUEVO COMPONENTE - Wrapper para ProductDetail con slug de URL
+function ProductDetailRoute() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const { products } = useProducts();
+  
+  // Buscar producto por slug o ID
+  const product = products.find(p => p.slug === slug || p.id.toString() === slug);
+  
+  if (!product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-4">Producto no encontrado</h2>
+          <button onClick={() => navigate('/')} className="btn-mixxo">
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <>
+      <Header 
+        onCartClick={() => {}}
+        onHomeClick={() => navigate('/')}
+      />
+      <ProductDetail 
+        productId={product.id}
+        onBack={() => navigate(-1)}
+        onProductClick={(id, slug) => navigate(`/producto/${slug || id}`)}
+      />
+    </>
+  );
+}
+
+function App() {
   useEffect(() => {
     MetaPixel.init();
   }, []);
@@ -714,12 +771,11 @@ function App() {
         <ProductProvider>
           <CartProvider>
             <PWAHelper />
-            <AppContent />
+            <AppWithRouter />
           </CartProvider>
         </ProductProvider>
       </CategoryProvider>
     </AuthProvider>
   );
 }
-
 export default App;
