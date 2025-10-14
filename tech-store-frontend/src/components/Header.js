@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoryContext';
+import MetaPixel from '../services/MetaPixel';
 
 const Header = ({ 
   onCartClick,
@@ -78,6 +79,19 @@ const Header = ({
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
 
+  / 🎯 NUEVA FUNCIÓN: Manejar búsqueda con tracking
+  const handleSearch = (value) => {
+    // Llamar a la función de búsqueda original
+    if (onSearch) {
+      onSearch(value);
+    }
+    
+    // 🎯 META PIXEL: Rastrear búsqueda (solo si tiene 3+ caracteres)
+    if (value.trim().length >= 3) {
+      MetaPixel.trackSearch(value.trim());
+    }
+  };
+  
   return (
     <header className="sticky top-0 z-40 glass-card shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -123,18 +137,18 @@ const Header = ({
                 </svg>
               </div>
               <input
-                type="text"
-                className={`block w-full pl-12 pr-4 py-3 rounded-2xl leading-5 transition-all duration-300 font-medium ${
-                  isSearchFocused 
-                    ? 'border-2 border-mixxo-pink-500 shadow-mixxo bg-white ring-4 ring-mixxo-pink-500/10' 
-                    : 'border-2 border-gray-200 hover:border-gray-300 bg-gray-50'
-                }`}
-                placeholder="Busca productos, marcas, categorías..."
-                value={searchQuery || ''}
-                onChange={(e) => onSearch && onSearch(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-              />
+  type="text"
+  className={`block w-full pl-12 pr-4 py-3 rounded-2xl leading-5 transition-all duration-300 font-medium ${
+    isSearchFocused 
+      ? 'border-2 border-mixxo-pink-500 shadow-mixxo bg-white ring-4 ring-mixxo-pink-500/10' 
+      : 'border-2 border-gray-200 hover:border-gray-300 bg-gray-50'
+  }`}
+  placeholder="Busca productos, marcas, categorías..."
+  value={searchQuery || ''}
+  onChange={(e) => handleSearch(e.target.value)}
+  onFocus={() => setIsSearchFocused(true)}
+  onBlur={() => setIsSearchFocused(false)}
+/>
             </div>
           </div>
 
@@ -364,12 +378,12 @@ const Header = ({
               </svg>
             </div>
             <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-3 border-2 border-gray-200 rounded-2xl leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:border-mixxo-pink-500 focus:ring-2 focus:ring-mixxo-pink-500/20"
-              placeholder="Buscar productos..."
-              value={searchQuery || ''}
-              onChange={(e) => onSearch && onSearch(e.target.value)}
-            />
+  type="text"
+  className="block w-full pl-10 pr-3 py-3 border-2 border-gray-200 rounded-2xl leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:border-mixxo-pink-500 focus:ring-2 focus:ring-mixxo-pink-500/20"
+  placeholder="Buscar productos..."
+  value={searchQuery || ''}
+  onChange={(e) => handleSearch(e.target.value)}
+/>
           </div>
         </div>
 
