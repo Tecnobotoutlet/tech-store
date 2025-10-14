@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import wompiService from '../services/wompiService';
 import { supabase } from '../supabaseClient'; // 🔥 AGREGADO
+import MetaPixel from '../services/MetaPixel';
 import { 
   CheckCircle, 
   XCircle, 
@@ -85,7 +86,6 @@ const PaymentResult = ({
       const transactionId = urlParams.get('id');
       const reference = urlParams.get('reference');
       
-      // Obtener order_id del localStorage
       const orderId = localStorage.getItem('order_id');
       
       if (transactionId || localStorage.getItem('payment_transaction_id')) {
@@ -97,20 +97,16 @@ const PaymentResult = ({
         try {
           setVerifying(true);
           
-          // Esperar 2 segundos para que Wompi procese
           await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // Consultar estado en Wompi
           const result = await wompiService.getTransactionStatus(txId);
           
           console.log('📥 Estado de Wompi:', result);
           
-          // 🔥 NUEVO: Actualizar estado en Supabase
           if (orderId && result.status) {
             await updateOrderStatus(orderId, result.status, txId, ref);
           }
           
-          // Mapear estado para la UI
           const mappedStatus = {
             'APPROVED': 'success',
             'DECLINED': 'error',
@@ -120,23 +116,34 @@ const PaymentResult = ({
           }[result.status] || 'error';
           
           setStatus(mappedStatus);
-          setPaymentData({
+          const newPaymentData = {
             reference: ref,
             transactionId: txId,
             orderId: orderId,
             amount: result.amount_in_cents / 100,
             status: result.status
-          });
+          };
+          setPaymentData(newPaymentData);
           
-          // Enviar email si es exitoso
+          // 🎯 META PIXEL: Rastrear compra exitosa
           if (mappedStatus === 'success') {
+            // Obtener items del localStorage si están disponibles
+            const storedItems = localStorage.getItem('cart_items');
+            const items = storedItems ? JSON.parse(storedItems) : [];
+            
+            MetaPixel.trackPurchase({
+              orderId: orderId,
+              items: items,
+              total: result.amount_in_cents / 100
+            });
+            
             setTimeout(() => setEmailSent(true), 2000);
           }
           
-          // Limpiar localStorage
           localStorage.removeItem('payment_reference');
           localStorage.removeItem('payment_transaction_id');
           localStorage.removeItem('order_id');
+          localStorage.removeItem('cart_items'); // 🎯 Limpiar items también
           
         } catch (error) {
           console.error('❌ Error verificando pago:', error);
@@ -155,7 +162,7 @@ const PaymentResult = ({
     
     checkURLParams();
   }, []);
-
+  
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hasURLParams = urlParams.get('id') || urlParams.get('reference') || 
@@ -165,12 +172,19 @@ const PaymentResult = ({
       setStatus(propType);
       setPaymentData(propPaymentData);
       setVerifying(false);
-      if (propType === 'success') {
+      
+      // 🎯 META PIXEL: Rastrear compra exitosa desde props
+      if (propType === 'success' && propPaymentData) {
+        MetaPixel.trackPurchase({
+          orderId: propPaymentData.orderId,
+          items: propPaymentData.items || [],
+          total: propPaymentData.amount || 0
+        });
+        
         setTimeout(() => setEmailSent(true), 2000);
       }
     }
   }, [propType, propPaymentData]);
-
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
