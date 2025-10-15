@@ -110,7 +110,7 @@ const ImageGallery = ({ images = [], productName }) => {
       <div className="space-y-4">
         {/* Main Image */}
         <div className="relative group">
-          <div className="h-80 bg-gray-100 rounded-lg overflow-hidden">
+          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
             {!isImageLoaded[selectedImageIndex] && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="animate-pulse bg-gray-200 w-full h-full"></div>
