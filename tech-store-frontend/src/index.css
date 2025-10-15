@@ -466,3 +466,40 @@ h1, h2, h3, h4, h5, h6 {
     display: none !important;
   }
 }
+
+/* ===== VERSIÓN COMPACTA - SOBRESCRIBIR ESTILOS ===== */
+
+.product-card-mixxo:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 15px 45px -12px rgba(233, 30, 99, 0.3);
+}
+
+.btn-mixxo {
+  box-shadow: 0 8px 25px -8px rgba(233, 30, 99, 0.5);
+}
+
+.btn-mixxo:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 35px -8px rgba(233, 30, 99, 0.6);
+}
+
+.btn-cyan {
+  box-shadow: 0 8px 25px -8px rgba(0, 188, 212, 0.5);
+}
+
+.btn-cyan:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 35px -8px rgba(0, 188, 212, 0.6);
+}
+
+.carousel-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 40px -10px rgba(233, 30, 99, 0.3);
+}
+
+@media (max-width: 640px) {
+  .btn-mixxo, .btn-cyan {
+    @apply py-2 px-4 text-sm;
+  }
+}
+  
