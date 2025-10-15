@@ -482,26 +482,50 @@ body:has(.fixed.inset-0[tabindex="0"]) {
 }
 
 
-  /* ==========================================
-   🔧 LIGHTBOX FIXES - MÁXIMA PRIORIDAD Z-INDEX
-   Agregar al FINAL de index.css
+ /* ==========================================
+   🚨 LIGHTBOX FIXES - SOLUCIÓN DEFINITIVA
+   Agregado: [FECHA DE HOY]
    ========================================== */
 
-/* LIGHTBOX - Overlay siempre arriba de TODO */
+/* LIGHTBOX - Z-index más alto posible */
 .lightbox-overlay {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 999999 !important;
+  z-index: 2147483647 !important; /* Máximo z-index posible en CSS */
   isolation: isolate !important;
+  background-color: rgba(0, 0, 0, 0.95) !important;
 }
 
-/* Prevenir que cualquier elemento intente superponerse */
+/* Forzar que TODO dentro del lightbox tenga prioridad */
 .lightbox-overlay * {
   position: relative !important;
-  z-index: inherit !important;
+  z-index: 2147483646 !important;
 }
 
-/* Bloquear scroll del body cuando lightbox está abierto */
+/* Contenedor del lightbox */
+.lightbox-overlay > div {
+  position: relative !important;
+  z-index: 2147483646 !important;
+  pointer-events: all !important;
+}
+
+/* Botones del lightbox */
+.lightbox-overlay button {
+  position: absolute !important;
+  z-index: 2147483646 !important;
+  pointer-events: all !important;
+}
+
+/* Imagen del lightbox */
+.lightbox-overlay img {
+  position: relative !important;
+  z-index: 2147483646 !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+  object-fit: contain !important;
+}
+
+/* CRÍTICO: Bloquear scroll cuando lightbox está abierto */
 body:has(.lightbox-overlay) {
   overflow: hidden !important;
   position: fixed !important;
@@ -509,57 +533,66 @@ body:has(.lightbox-overlay) {
   height: 100% !important;
 }
 
-/* Asegurar que el contenido del lightbox sea clickeable */
-.lightbox-overlay > div {
+/* CRÍTICO: Forzar que TODOS los elementos que NO son lightbox tengan z-index bajo */
+body:has(.lightbox-overlay) *:not(.lightbox-overlay):not(.lightbox-overlay *) {
+  z-index: 1 !important;
+}
+
+/* Prevenir interacción con elementos debajo */
+body:has(.lightbox-overlay) > *:not(.lightbox-overlay) {
+  pointer-events: none !important;
   position: relative !important;
-  z-index: 1000000 !important;
-  pointer-events: all !important;
+  z-index: 1 !important;
 }
 
-/* Asegurar que los botones del lightbox funcionen */
-.lightbox-overlay button {
-  position: absolute !important;
-  z-index: 1000001 !important;
-  pointer-events: all !important;
-}
-
-/* Imagen del lightbox */
-.lightbox-overlay img {
-  position: relative !important;
-  z-index: 1000000 !important;
-  max-width: 90vw !important;
-  max-height: 90vh !important;
-  object-fit: contain !important;
-}
-
-/* Prevenir que otros elementos fixed se superpongan */
-.fixed:not(.lightbox-overlay) {
-  z-index: 50 !important;
-}
-
-/* Header debe estar debajo del lightbox */
-header,
-.header,
-nav {
-  position: relative !important;
-}
-
+/* Asegurar que header, nav, y otros elementos fixed estén debajo */
 body:has(.lightbox-overlay) header,
+body:has(.lightbox-overlay) nav,
 body:has(.lightbox-overlay) .header,
-body:has(.lightbox-overlay) nav {
-  z-index: 40 !important;
+body:has(.lightbox-overlay) [class*="fixed"],
+body:has(.lightbox-overlay) [class*="sticky"] {
+  z-index: 1 !important;
+  pointer-events: none !important;
 }
 
-/* Notificaciones deben estar debajo del lightbox */
+/* Forzar que notificaciones estén debajo */
 body:has(.lightbox-overlay) [class*="notification"],
-body:has(.lightbox-overlay) [class*="toast"] {
-  z-index: 50 !important;
+body:has(.lightbox-overlay) [class*="toast"],
+body:has(.lightbox-overlay) [class*="alert"],
+body:has(.lightbox-overlay) [class*="modal"]:not(.lightbox-overlay) {
+  z-index: 1 !important;
+  pointer-events: none !important;
 }
 
-/* Asegurar que el lightbox sea interactivo */
-.lightbox-overlay {
+/* Forzar que elementos de precio, badges, etc. estén debajo */
+body:has(.lightbox-overlay) [class*="price"],
+body:has(.lightbox-overlay) [class*="badge"],
+body:has(.lightbox-overlay) [class*="tag"],
+body:has(.lightbox-overlay) .glass-card,
+body:has(.lightbox-overlay) [class*="z-"] {
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+/* Re-habilitar interacción solo para lightbox */
+.lightbox-overlay,
+.lightbox-overlay * {
   pointer-events: all !important;
-  touch-action: none !important;
+  touch-action: auto !important;
+}
+
+/* Animación suave */
+.lightbox-overlay {
+  animation: lightbox-fade-in 0.2s ease-out;
+}
+
+@keyframes lightbox-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Responsive para móviles */
@@ -579,27 +612,18 @@ body:has(.lightbox-overlay) [class*="toast"] {
   }
 }
 
-/* Animación suave al abrir */
+/* Asegurar que lightbox sea visible sobre todo */
 .lightbox-overlay {
-  animation: lightbox-fade-in 0.2s ease-out;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-@keyframes lightbox-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Prevenir interacción con elementos debajo del lightbox */
-body:has(.lightbox-overlay) > *:not(.lightbox-overlay) {
-  pointer-events: none !important;
-}
-
-/* Re-habilitar pointer events para el lightbox */
-.lightbox-overlay,
-.lightbox-overlay * {
-  pointer-events: all !important;
+/* Prevenir que Tailwind sobrescriba */
+.lightbox-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
 }
