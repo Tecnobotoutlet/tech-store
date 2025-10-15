@@ -70,9 +70,7 @@ const Header = ({
     : 0;
 
   const handleCartClick = () => {
-    requireAuth(() => {
-      if (onCartClick) onCartClick();
-    });
+    if (onCartClick) onCartClick();
   };
 
   const getInitials = (firstName, lastName) => {
