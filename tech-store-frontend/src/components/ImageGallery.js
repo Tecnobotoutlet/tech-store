@@ -40,7 +40,7 @@ const ImageGallery = ({ images = [], productName }) => {
 
   // Lightbox Component
   const Lightbox = () => {
-    // Block body scroll when lightbox is open
+    // Block body scroll and hide problematic elements when lightbox is open
     React.useEffect(() => {
       // Guardar posición actual del scroll
       const scrollY = window.scrollY;
@@ -51,13 +51,69 @@ const ImageGallery = ({ images = [], productName }) => {
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
       
+      // Forzar que todos los elementos no-lightbox tengan z-index bajo
+      const allElements = document.querySelectorAll('body > *:not(.lightbox-overlay)');
+      const originalZIndices = [];
+      
+      allElements.forEach((el, index) => {
+        originalZIndices[index] = el.style.zIndex;
+        el.style.zIndex = '1';
+        el.style.position = 'relative';
+      });
+      
+      // Ocultar elementos problemáticos específicos
+      const problematicSelectors = [
+        '[class*="price"]',
+        '[class*="badge"]',
+        '[class*="notification"]',
+        '[class*="toast"]',
+        'header',
+        'nav',
+        '.glass-card:not(.lightbox-overlay *)',
+        '[class*="z-50"]',
+        '[class*="z-40"]',
+        '[class*="fixed"]:not(.lightbox-overlay)'
+      ];
+      
+      const problematicElements = [];
+      problematicSelectors.forEach(selector => {
+        try {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(el => {
+            if (!el.closest('.lightbox-overlay')) {
+              problematicElements.push({
+                element: el,
+                originalZIndex: el.style.zIndex,
+                originalPointerEvents: el.style.pointerEvents
+              });
+              el.style.zIndex = '1';
+              el.style.pointerEvents = 'none';
+            }
+          });
+        } catch (e) {
+          // Ignorar errores de selectores inválidos
+        }
+      });
+      
       return () => {
-        // Restaurar scroll cuando se cierre el lightbox
+        // Restaurar scroll
         document.body.style.overflow = '';
         document.body.style.position = '';
         document.body.style.top = '';
         document.body.style.width = '';
         window.scrollTo(0, scrollY);
+        
+        // Restaurar z-indices originales
+        allElements.forEach((el, index) => {
+          el.style.zIndex = originalZIndices[index] || '';
+          el.style.position = '';
+        });
+        
+        // Restaurar elementos problemáticos
+        problematicElements.forEach(({ element, originalZIndex, originalPointerEvents }) => {
+          element.style.zIndex = originalZIndex || '';
+          element.style.pointerEvents = originalPointerEvents || '';
+        });
       };
     }, []);
 
@@ -73,7 +129,7 @@ const ImageGallery = ({ images = [], productName }) => {
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 999999,
+          zIndex: 2147483647, // Máximo z-index posible
           backgroundColor: 'rgba(0, 0, 0, 0.95)',
           display: 'flex',
           alignItems: 'center',
@@ -83,13 +139,13 @@ const ImageGallery = ({ images = [], productName }) => {
       >
         <div 
           className="relative max-w-7xl max-h-full p-4 w-full h-full flex items-center justify-center" 
-          style={{ zIndex: 1000000 }}
+          style={{ zIndex: 2147483646 }}
         >
           {/* Close Button */}
           <button
             onClick={closeLightbox}
             className="absolute top-4 right-4 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
-            style={{ zIndex: 1000001 }}
+            style={{ zIndex: 2147483646 }}
             aria-label="Cerrar visor de imágenes"
           >
             <X className="w-6 h-6" />
@@ -104,7 +160,7 @@ const ImageGallery = ({ images = [], productName }) => {
                   prevImage();
                 }}
                 className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
-                style={{ zIndex: 1000001 }}
+                style={{ zIndex: 2147483646 }}
                 aria-label="Imagen anterior"
               >
                 <ChevronLeft className="w-6 h-6" />
@@ -115,7 +171,7 @@ const ImageGallery = ({ images = [], productName }) => {
                   nextImage();
                 }}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
-                style={{ zIndex: 1000001 }}
+                style={{ zIndex: 2147483646 }}
                 aria-label="Imagen siguiente"
               >
                 <ChevronRight className="w-6 h-6" />
@@ -129,9 +185,10 @@ const ImageGallery = ({ images = [], productName }) => {
             alt={`${productName} - Imagen ${selectedImageIndex + 1}`}
             className="max-w-full max-h-full object-contain cursor-zoom-out"
             style={{ 
-              zIndex: 1000000,
+              zIndex: 2147483646,
               maxWidth: '90vw',
-              maxHeight: '90vh'
+              maxHeight: '90vh',
+              position: 'relative'
             }}
             onClick={(e) => e.stopPropagation()}
           />
@@ -140,7 +197,7 @@ const ImageGallery = ({ images = [], productName }) => {
           {images.length > 1 && (
             <div 
               className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-medium"
-              style={{ zIndex: 1000001 }}
+              style={{ zIndex: 2147483646 }}
             >
               {selectedImageIndex + 1} / {images.length}
             </div>
