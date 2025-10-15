@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, ZoomIn, X, Maximize } from 'lucide-react';
 
 const ImageGallery = ({ images = [], productName }) => {
@@ -40,84 +41,41 @@ const ImageGallery = ({ images = [], productName }) => {
 
   // Lightbox Component
   const Lightbox = () => {
-    // Block body scroll and hide problematic elements when lightbox is open
+    // Block body scroll when lightbox is open
     React.useEffect(() => {
-      // Guardar posición actual del scroll
       const scrollY = window.scrollY;
       
-      // Bloquear scroll del body
+      // Agregar clase al body
+      document.body.classList.add('lightbox-active');
+      
+      // Bloquear scroll
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
       
-      // Forzar que todos los elementos no-lightbox tengan z-index bajo
-      const allElements = document.querySelectorAll('body > *:not(.lightbox-overlay)');
-      const originalZIndices = [];
-      
-      allElements.forEach((el, index) => {
-        originalZIndices[index] = el.style.zIndex;
-        el.style.zIndex = '1';
-        el.style.position = 'relative';
-      });
-      
-      // Ocultar elementos problemáticos específicos
-      const problematicSelectors = [
-        '[class*="price"]',
-        '[class*="badge"]',
-        '[class*="notification"]',
-        '[class*="toast"]',
-        'header',
-        'nav',
-        '.glass-card:not(.lightbox-overlay *)',
-        '[class*="z-50"]',
-        '[class*="z-40"]',
-        '[class*="fixed"]:not(.lightbox-overlay)'
-      ];
-      
-      const problematicElements = [];
-      problematicSelectors.forEach(selector => {
-        try {
-          const elements = document.querySelectorAll(selector);
-          elements.forEach(el => {
-            if (!el.closest('.lightbox-overlay')) {
-              problematicElements.push({
-                element: el,
-                originalZIndex: el.style.zIndex,
-                originalPointerEvents: el.style.pointerEvents
-              });
-              el.style.zIndex = '1';
-              el.style.pointerEvents = 'none';
-            }
-          });
-        } catch (e) {
-          // Ignorar errores de selectores inválidos
+      // Focus en el lightbox
+      setTimeout(() => {
+        const lightbox = document.querySelector('.lightbox-overlay');
+        if (lightbox) {
+          lightbox.focus();
         }
-      });
+      }, 100);
       
       return () => {
+        // Remover clase del body
+        document.body.classList.remove('lightbox-active');
+        
         // Restaurar scroll
         document.body.style.overflow = '';
         document.body.style.position = '';
         document.body.style.top = '';
         document.body.style.width = '';
         window.scrollTo(0, scrollY);
-        
-        // Restaurar z-indices originales
-        allElements.forEach((el, index) => {
-          el.style.zIndex = originalZIndices[index] || '';
-          el.style.position = '';
-        });
-        
-        // Restaurar elementos problemáticos
-        problematicElements.forEach(({ element, originalZIndex, originalPointerEvents }) => {
-          element.style.zIndex = originalZIndex || '';
-          element.style.pointerEvents = originalPointerEvents || '';
-        });
       };
     }, []);
 
-    return (
+    const lightboxContent = (
       <div 
         className="lightbox-overlay"
         onClick={closeLightbox}
@@ -129,7 +87,7 @@ const ImageGallery = ({ images = [], productName }) => {
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 2147483647, // Máximo z-index posible
+          zIndex: 2147483647,
           backgroundColor: 'rgba(0, 0, 0, 0.95)',
           display: 'flex',
           alignItems: 'center',
@@ -138,14 +96,13 @@ const ImageGallery = ({ images = [], productName }) => {
         }}
       >
         <div 
-          className="relative max-w-7xl max-h-full p-4 w-full h-full flex items-center justify-center" 
+          className="relative w-full h-full flex items-center justify-center p-4" 
           style={{ zIndex: 2147483646 }}
         >
           {/* Close Button */}
           <button
             onClick={closeLightbox}
-            className="absolute top-4 right-4 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
-            style={{ zIndex: 2147483646 }}
+            className="absolute top-4 right-4 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110 z-50"
             aria-label="Cerrar visor de imágenes"
           >
             <X className="w-6 h-6" />
@@ -159,8 +116,7 @@ const ImageGallery = ({ images = [], productName }) => {
                   e.stopPropagation();
                   prevImage();
                 }}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
-                style={{ zIndex: 2147483646 }}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110 z-50"
                 aria-label="Imagen anterior"
               >
                 <ChevronLeft className="w-6 h-6" />
@@ -170,8 +126,7 @@ const ImageGallery = ({ images = [], productName }) => {
                   e.stopPropagation();
                   nextImage();
                 }}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
-                style={{ zIndex: 2147483646 }}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110 z-50"
                 aria-label="Imagen siguiente"
               >
                 <ChevronRight className="w-6 h-6" />
@@ -185,10 +140,10 @@ const ImageGallery = ({ images = [], productName }) => {
             alt={`${productName} - Imagen ${selectedImageIndex + 1}`}
             className="max-w-full max-h-full object-contain cursor-zoom-out"
             style={{ 
-              zIndex: 2147483646,
               maxWidth: '90vw',
               maxHeight: '90vh',
-              position: 'relative'
+              position: 'relative',
+              zIndex: 2147483646
             }}
             onClick={(e) => e.stopPropagation()}
           />
@@ -196,8 +151,7 @@ const ImageGallery = ({ images = [], productName }) => {
           {/* Image Counter */}
           {images.length > 1 && (
             <div 
-              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-medium"
-              style={{ zIndex: 2147483646 }}
+              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-medium z-50"
             >
               {selectedImageIndex + 1} / {images.length}
             </div>
@@ -205,6 +159,9 @@ const ImageGallery = ({ images = [], productName }) => {
         </div>
       </div>
     );
+
+    // Renderizar usando Portal directamente en el body
+    return createPortal(lightboxContent, document.body);
   };
 
   if (!images || images.length === 0) {
