@@ -110,7 +110,7 @@ const ImageGallery = ({ images = [], productName }) => {
       <div className="space-y-4">
         {/* Main Image */}
         <div className="relative group">
-          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+          <div className="h-80 bg-gray-100 rounded-lg overflow-hidden">
             {!isImageLoaded[selectedImageIndex] && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="animate-pulse bg-gray-200 w-full h-full"></div>
@@ -129,9 +129,9 @@ const ImageGallery = ({ images = [], productName }) => {
             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
               <button
                 onClick={openLightbox}
-                className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 text-gray-800 p-3 rounded-full hover:bg-opacity-100 transition-all duration-300 transform group-hover:scale-105"
+                className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 text-gray-800 p-2.5 rounded-full hover:bg-opacity-100 transition-all duration-300 transform group-hover:scale-105"
               >
-                <Maximize className="w-6 h-6" />
+                <Maximize className="w-5 h-5" />
               </button>
             </div>
 
@@ -140,23 +140,23 @@ const ImageGallery = ({ images = [], productName }) => {
               <>
                 <button
                   onClick={prevImage}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={nextImage}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </>
             )}
 
             {/* Zoom Hint */}
             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded flex items-center space-x-1">
-                <ZoomIn className="w-3 h-3" />
+              <div className="bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded flex items-center space-x-1">
+                <ZoomIn className="w-2.5 h-2.5" />
                 <span>Click para ampliar</span>
               </div>
             </div>
@@ -170,7 +170,7 @@ const ImageGallery = ({ images = [], productName }) => {
               <button
                 key={index}
                 onClick={() => setSelectedImageIndex(index)}
-                className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                   selectedImageIndex === index
                     ? 'border-blue-500 shadow-md'
                     : 'border-gray-300 hover:border-gray-400'
@@ -188,19 +188,19 @@ const ImageGallery = ({ images = [], productName }) => {
 
         {/* Image Counter */}
         {images.length > 1 && (
-          <div className="text-center text-sm text-gray-600">
+          <div className="text-center text-xs text-gray-600">
             Imagen {selectedImageIndex + 1} de {images.length}
           </div>
         )}
 
         {/* Quick Actions */}
-        <div className="flex items-center justify-center space-x-4 pt-2">
+        <div className="flex items-center justify-center pt-1">
           <button
             onClick={openLightbox}
-            className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors"
+            className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 transition-colors"
           >
-            <Maximize className="w-4 h-4" />
-            <span className="text-sm font-medium">Ver en pantalla completa</span>
+            <Maximize className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">Ver en pantalla completa</span>
           </button>
         </div>
       </div>
