@@ -279,16 +279,16 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
-        {/* Main Product Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-          {/* Image Gallery */}
-          <div className="lg:sticky lg:top-24 h-fit">
-            <ImageGallery images={product.images || [product.image]} productName={product.name} />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+  {/* Image Gallery */}
+  <div className="w-full">
+    <div className="lg:sticky lg:top-20">
+      <ImageGallery images={product.images || [product.image]} productName={product.name} />
+    </div>
+  </div>
 
-          {/* Product Info */}
-          <div className="space-y-6">
+  {/* Product Info */}
+  <div className="w-full space-y-4">
             {/* Badges */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-bold text-mixxo-pink-500 bg-mixxo-pink-50 px-4 py-2 rounded-full">
