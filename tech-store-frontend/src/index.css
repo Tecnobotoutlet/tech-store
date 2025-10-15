@@ -480,3 +480,126 @@ h1, h2, h3, h4, h5, h6 {
 body:has(.fixed.inset-0[tabindex="0"]) {
   overflow: hidden !important;
 }
+
+
+  /* ==========================================
+   🔧 LIGHTBOX FIXES - MÁXIMA PRIORIDAD Z-INDEX
+   Agregar al FINAL de index.css
+   ========================================== */
+
+/* LIGHTBOX - Overlay siempre arriba de TODO */
+.lightbox-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  isolation: isolate !important;
+}
+
+/* Prevenir que cualquier elemento intente superponerse */
+.lightbox-overlay * {
+  position: relative !important;
+  z-index: inherit !important;
+}
+
+/* Bloquear scroll del body cuando lightbox está abierto */
+body:has(.lightbox-overlay) {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Asegurar que el contenido del lightbox sea clickeable */
+.lightbox-overlay > div {
+  position: relative !important;
+  z-index: 1000000 !important;
+  pointer-events: all !important;
+}
+
+/* Asegurar que los botones del lightbox funcionen */
+.lightbox-overlay button {
+  position: absolute !important;
+  z-index: 1000001 !important;
+  pointer-events: all !important;
+}
+
+/* Imagen del lightbox */
+.lightbox-overlay img {
+  position: relative !important;
+  z-index: 1000000 !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+  object-fit: contain !important;
+}
+
+/* Prevenir que otros elementos fixed se superpongan */
+.fixed:not(.lightbox-overlay) {
+  z-index: 50 !important;
+}
+
+/* Header debe estar debajo del lightbox */
+header,
+.header,
+nav {
+  position: relative !important;
+}
+
+body:has(.lightbox-overlay) header,
+body:has(.lightbox-overlay) .header,
+body:has(.lightbox-overlay) nav {
+  z-index: 40 !important;
+}
+
+/* Notificaciones deben estar debajo del lightbox */
+body:has(.lightbox-overlay) [class*="notification"],
+body:has(.lightbox-overlay) [class*="toast"] {
+  z-index: 50 !important;
+}
+
+/* Asegurar que el lightbox sea interactivo */
+.lightbox-overlay {
+  pointer-events: all !important;
+  touch-action: none !important;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .lightbox-overlay {
+    padding: 0 !important;
+  }
+  
+  .lightbox-overlay img {
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+  }
+  
+  .lightbox-overlay > div {
+    padding: 1rem !important;
+    max-width: 100vw !important;
+  }
+}
+
+/* Animación suave al abrir */
+.lightbox-overlay {
+  animation: lightbox-fade-in 0.2s ease-out;
+}
+
+@keyframes lightbox-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Prevenir interacción con elementos debajo del lightbox */
+body:has(.lightbox-overlay) > *:not(.lightbox-overlay) {
+  pointer-events: none !important;
+}
+
+/* Re-habilitar pointer events para el lightbox */
+.lightbox-overlay,
+.lightbox-overlay * {
+  pointer-events: all !important;
+}
