@@ -39,63 +39,116 @@ const ImageGallery = ({ images = [], productName }) => {
   };
 
   // Lightbox Component
-  const Lightbox = () => (
-  <div 
-    className="fixed inset-0 z-[9999] bg-black bg-opacity-90 flex items-center justify-center"
-    onClick={closeLightbox}
-    onKeyDown={handleKeyDown}
-    tabIndex={0}
-  >
-      <div className="relative max-w-7xl max-h-full p-4">
-        {/* Close Button */}
-        <button
-          onClick={closeLightbox}
-          className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-colors"
+  const Lightbox = () => {
+    // Block body scroll when lightbox is open
+    React.useEffect(() => {
+      // Guardar posición actual del scroll
+      const scrollY = window.scrollY;
+      
+      // Bloquear scroll del body
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      
+      return () => {
+        // Restaurar scroll cuando se cierre el lightbox
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, scrollY);
+      };
+    }, []);
+
+    return (
+      <div 
+        className="lightbox-overlay"
+        onClick={closeLightbox}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Visor de imágenes en pantalla completa"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 999999,
+          backgroundColor: 'rgba(0, 0, 0, 0.95)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          isolation: 'isolate'
+        }}
+      >
+        <div 
+          className="relative max-w-7xl max-h-full p-4 w-full h-full flex items-center justify-center" 
+          style={{ zIndex: 1000000 }}
         >
-          <X className="w-6 h-6" />
-        </button>
+          {/* Close Button */}
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
+            style={{ zIndex: 1000001 }}
+            aria-label="Cerrar visor de imágenes"
+          >
+            <X className="w-6 h-6" />
+          </button>
 
-        {/* Navigation Buttons */}
-        {images.length > 1 && (
-          <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                prevImage();
-              }}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-colors"
+          {/* Navigation Buttons */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prevImage();
+                }}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
+                style={{ zIndex: 1000001 }}
+                aria-label="Imagen anterior"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nextImage();
+                }}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all hover:scale-110"
+                style={{ zIndex: 1000001 }}
+                aria-label="Imagen siguiente"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
+
+          {/* Main Image */}
+          <img
+            src={currentImage}
+            alt={`${productName} - Imagen ${selectedImageIndex + 1}`}
+            className="max-w-full max-h-full object-contain cursor-zoom-out"
+            style={{ 
+              zIndex: 1000000,
+              maxWidth: '90vw',
+              maxHeight: '90vh'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Image Counter */}
+          {images.length > 1 && (
+            <div 
+              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-medium"
+              style={{ zIndex: 1000001 }}
             >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                nextImage();
-              }}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-colors"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </>
-        )}
-
-        {/* Main Image */}
-        <img
-          src={currentImage}
-          alt={`${productName} - Imagen ${selectedImageIndex + 1}`}
-          className="max-w-full max-h-full object-contain cursor-zoom-out"
-          onClick={(e) => e.stopPropagation()}
-        />
-
-        {/* Image Counter */}
-        {images.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-            {selectedImageIndex + 1} / {images.length}
-          </div>
-        )}
+              {selectedImageIndex + 1} / {images.length}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (!images || images.length === 0) {
     return (
@@ -130,6 +183,7 @@ const ImageGallery = ({ images = [], productName }) => {
               <button
                 onClick={openLightbox}
                 className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 text-gray-800 p-2.5 rounded-full hover:bg-opacity-100 transition-all duration-300 transform group-hover:scale-105"
+                aria-label="Ver imagen en pantalla completa"
               >
                 <Maximize className="w-5 h-5" />
               </button>
@@ -141,12 +195,14 @@ const ImageGallery = ({ images = [], productName }) => {
                 <button
                   onClick={prevImage}
                   className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
+                  aria-label="Imagen anterior"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={nextImage}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 text-gray-800 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
+                  aria-label="Imagen siguiente"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -175,6 +231,7 @@ const ImageGallery = ({ images = [], productName }) => {
                     ? 'border-blue-500 shadow-md'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}
+                aria-label={`Ver imagen ${index + 1}`}
               >
                 <img
                   src={image}
