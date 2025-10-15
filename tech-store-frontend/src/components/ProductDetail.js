@@ -278,7 +278,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
           </nav>
         </div>
       </div>
-
+<div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
   {/* Image Gallery */}
   <div className="w-full">
@@ -286,6 +286,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
       <ImageGallery images={product.images || [product.image]} productName={product.name} />
     </div>
   </div>
+);
 
   {/* Product Info */}
   <div className="w-full space-y-4">
