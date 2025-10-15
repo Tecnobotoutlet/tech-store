@@ -467,63 +467,16 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* ===== VERSIÓN COMPACTA - SOBRESCRIBIR ESTILOS ===== */
+/* ==========================================
+   🔧 FIX PRODUCTDETAIL - MOBILE RESPONSIVE
+   ========================================== */
 
-.product-card-mixxo:hover {
-  transform: translateY(-6px) scale(1.01);
-  box-shadow: 0 15px 45px -12px rgba(233, 30, 99, 0.3);
-}
-
-.btn-mixxo {
-  box-shadow: 0 8px 25px -8px rgba(233, 30, 99, 0.5);
-}
-
-.btn-mixxo:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 35px -8px rgba(233, 30, 99, 0.6);
-}
-
-.btn-cyan {
-  box-shadow: 0 8px 25px -8px rgba(0, 188, 212, 0.5);
-}
-
-.btn-cyan:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 35px -8px rgba(0, 188, 212, 0.6);
-}
-
-.carousel-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 15px 40px -10px rgba(233, 30, 99, 0.3);
-}
-
-@media (max-width: 640px) {
-  .btn-mixxo, .btn-cyan {
-    @apply py-2 px-4 text-sm;
-  }
-}
-  
-/* Fix para ProductDetail - Evitar superposición de columnas */
-@media (max-width: 1023px) {
-  /* En mobile/tablet, asegurar que las columnas no se superpongan */
-  .container .grid.grid-cols-1.lg\:grid-cols-2 > div {
-    position: relative;
-    z-index: 1;
-  }
-  
-  /* Asegurar que el sticky no cause problemas en mobile */
-  .lg\:sticky {
-    position: static !important;
-  }
-}
-
-/* Asegurar que lightbox siempre esté arriba */
-.fixed.inset-0 {
+/* LIGHTBOX SIEMPRE ARRIBA DE TODO */
+.fixed.inset-0[tabindex="0"] {
   z-index: 99999 !important;
   position: fixed !important;
 }
 
-/* Prevenir scroll cuando lightbox está abierto */
 body:has(.fixed.inset-0[tabindex="0"]) {
-  overflow: hidden;
+  overflow: hidden !important;
 }
