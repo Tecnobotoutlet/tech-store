@@ -41,7 +41,7 @@ const ImageGallery = ({ images = [], productName }) => {
   // Lightbox Component
   const Lightbox = () => (
   <div 
-    className="fixed inset-0 z-[9999] bg-black bg-opacity-90 flex items-center justify-center"
+    className="image-lightbox bg-black bg-opacity-90 flex items-center justify-center"
     onClick={closeLightbox}
       onKeyDown={handleKeyDown}
       tabIndex={0}
