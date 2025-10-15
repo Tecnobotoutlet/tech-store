@@ -280,7 +280,7 @@ const ProductDetail = ({ productId, onBack, onProductClick }) => {
       </div>
 <div className="container mx-auto px-4 py-12">
         {/* Main Product Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-12 mb-16">
           {/* Image Gallery */}
           <div className="lg:sticky lg:top-24 h-fit">
             <ImageGallery images={product.images || [product.image]} productName={product.name} />
