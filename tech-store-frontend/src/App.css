@@ -595,3 +595,48 @@
 /* ==========================================
    END OF STYLES
    ========================================== */
+/* ==========================================
+   🔧 FIX PRODUCTDETAIL RESPONSIVE
+   ========================================== */
+
+/* Forzar comportamiento correcto del grid en mobile */
+@media (max-width: 1023px) {
+  /* En mobile, el grid DEBE ser de 1 columna */
+  .container .grid.grid-cols-1 {
+    display: block !important;
+  }
+  
+  .container .grid.grid-cols-1 > div {
+    width: 100% !important;
+    display: block !important;
+    margin-bottom: 2rem !important;
+  }
+  
+  /* Desactivar sticky en mobile */
+  .lg\:sticky {
+    position: static !important;
+  }
+  
+  .lg\:top-24 {
+    top: auto !important;
+  }
+}
+
+/* En desktop, asegurar grid de 2 columnas */
+@media (min-width: 1024px) {
+  .container .grid.lg\:grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Lightbox siempre arriba de todo */
+.fixed.inset-0[tabindex="0"] {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+/* Prevenir scroll cuando lightbox está abierto */
+body:has(.fixed.inset-0[tabindex="0"]) {
+  overflow: hidden !important;
+}
