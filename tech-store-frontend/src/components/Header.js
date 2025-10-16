@@ -414,40 +414,53 @@ const Header = ({
         No hay categorías
       </div>
     ) : (
-      <div className="grid grid-cols-2 gap-4 px-4">
-        {mainCategories.map((category, index) => (
-          <div key={index} className="space-y-2">
-            <button
-              onClick={() => {
-                onCategoryClick && onCategoryClick(category.name);
-                setShowCategoriesMenu(false);
-              }}
-              className="font-semibold text-gray-800 hover:text-mixxo-pink-500 transition-colors text-left flex items-center space-x-2 w-full group"
-            >
-              {category.icon && <span className="text-xl group-hover:scale-110 transition-transform">{category.icon}</span>}
-              <span>{category.name}</span>
-            </button>
-            {category.subcategories && category.subcategories.length > 0 && (
-              <ul className="space-y-1 pl-8">
-                {category.subcategories.slice(0, 4).map((sub, subIndex) => (
-                  <li key={subIndex}>
-                    <button
-                      onClick={() => {
-                        onCategoryClick && onCategoryClick(sub.name);
-                        setShowCategoriesMenu(false);
-                      }}
-                      className="text-sm text-gray-600 hover:text-mixxo-cyan-500 transition-colors text-left"
-                    >
-                      {sub.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+      <>
+        <div className="grid grid-cols-2 gap-4 px-4">
+          {mainCategories.map((category, index) => (
+            <div key={index} className="space-y-2">
+              <button
+                onClick={() => {
+                  onCategoryClick && onCategoryClick(category.name);
+                  setShowCategoriesMenu(false);
+                }}
+                className="font-semibold text-gray-800 hover:text-mixxo-pink-500 transition-colors text-left flex items-center space-x-2 w-full group"
+              >
+                {category.icon && <span className="text-xl group-hover:scale-110 transition-transform">{category.icon}</span>}
+                <span>{category.name}</span>
+              </button>
+              {category.subcategories && category.subcategories.length > 0 && (
+                <ul className="space-y-1 pl-8">
+                  {category.subcategories.slice(0, 4).map((sub, subIndex) => (
+                    <li key={subIndex}>
+                      <button
+                        onClick={() => {
+                          onCategoryClick && onCategoryClick(sub.name);
+                          setShowCategoriesMenu(false);
+                        }}
+                        className="text-sm text-gray-600 hover:text-mixxo-cyan-500 transition-colors text-left"
+                      >
+                        {sub.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+        
+        {/* Indicador de scroll */}
+        {mainCategories.length > 6 && (
+          <div className="text-center pt-3 border-t border-gray-100 mt-3">
+            <p className="text-xs text-gray-500">
+              ↕️ Desliza para ver más categorías
+            </p>
           </div>
-        ))}
-      </div>
+        )}
+      </>
     )}
+  </div>
+)}
     
     {/* 🔥 INDICADOR DE SCROLL */}
     {mainCategories.length > 6 && (
