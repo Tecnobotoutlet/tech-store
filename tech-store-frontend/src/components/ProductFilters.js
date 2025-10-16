@@ -30,10 +30,10 @@ const ProductFilters = ({
   // Obtener lista de categorías para filtros
   const categoryList = useMemo(() => {
     console.log('=== DEBUG FILTROS ===');
-console.log('Productos totales:', products.length);
-console.log('Primer producto:', products[0]);
-console.log('Categorías seleccionadas:', selectedCategories);
-console.log('====================');
+    console.log('Productos totales:', products.length);
+    console.log('Primer producto:', products[0]);
+    console.log('Categorías seleccionadas:', selectedCategories);
+    console.log('====================');
     
     const list = [];
     Object.values(categories).forEach(category => {
@@ -211,7 +211,7 @@ console.log('====================');
           </select>
         </div>
 
-        {/* Categories */}
+        {/* 🔥 Categories - CON SCROLL MEJORADO */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Categorías
@@ -219,14 +219,25 @@ console.log('====================');
               <span className="text-xs text-gray-500 ml-2">(Cargando...)</span>
             )}
           </label>
-          <div className="space-y-2 max-h-40 overflow-y-auto">
+          {/* 🔥 CONTENEDOR CON SCROLL INDEPENDIENTE */}
+          <div 
+            className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50 scroll-smooth category-scroll-container"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#CBD5E0 #F7FAFC'
+            }}
+            onWheel={(e) => {
+              // Prevenir que el scroll del contenedor afecte la página
+              e.stopPropagation();
+            }}
+          >
             {categoryList.length === 0 && !loadingCategories ? (
               <p className="text-sm text-gray-500">No hay categorías disponibles</p>
             ) : (
               categoryList.map((category, index) => (
                 <label 
                   key={`${category.name}-${index}`} 
-                  className={`flex items-center space-x-2 cursor-pointer ${
+                  className={`flex items-center space-x-2 cursor-pointer hover:bg-white p-2 rounded transition-colors ${
                     category.type === 'sub' ? 'ml-4' : ''
                   }`}
                 >
@@ -242,7 +253,7 @@ console.log('====================');
                     }}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-gray-700 flex-1">
                     {category.icon && <span className="mr-1">{category.icon}</span>}
                     {category.name}
                   </span>
@@ -250,6 +261,12 @@ console.log('====================');
               ))
             )}
           </div>
+          {/* 🔥 INDICADOR DE MÁS CONTENIDO */}
+          {categoryList.length > 6 && (
+            <p className="text-xs text-gray-500 mt-1 text-center">
+              ↕️ Desliza para ver más categorías
+            </p>
+          )}
         </div>
 
         {/* Price Range */}
@@ -350,7 +367,7 @@ console.log('====================');
                 onClick={() => {
                   console.log('Categoría clickeada:', category.name);
                   console.log('Productos actuales:', products.slice(0, 3));
-                    onCategoryChange([category.name]);
+                  onCategoryChange([category.name]);
                 }}
                 className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -369,6 +386,28 @@ console.log('====================');
           </div>
         </div>
       </div>
+
+      {/* 🔥 ESTILOS CSS PARA EL SCROLL */}
+      <style jsx>{`
+        /* Estilos personalizados para el scrollbar en navegadores webkit */
+        .category-scroll-container::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .category-scroll-container::-webkit-scrollbar-track {
+          background: #F7FAFC;
+          border-radius: 4px;
+        }
+        
+        .category-scroll-container::-webkit-scrollbar-thumb {
+          background: #CBD5E0;
+          border-radius: 4px;
+        }
+        
+        .category-scroll-container::-webkit-scrollbar-thumb:hover {
+          background: #A0AEC0;
+        }
+      `}</style>
     </div>
   );
 };
