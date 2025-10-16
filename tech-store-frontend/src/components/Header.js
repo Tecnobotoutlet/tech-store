@@ -403,7 +403,7 @@ const Header = ({
               </button>
 
               {showCategoriesMenu && (
-  <div className="absolute top-full left-0 mt-2 w-96 glass-card rounded-2xl shadow-mixxo-lg border border-gray-100 py-4 z-50 animate-scale-in max-h-[70vh] overflow-y-auto">
+  <div className="absolute top-full left-0 mt-2 w-96 glass-card rounded-2xl shadow-mixxo-lg border border-gray-100 z-50 animate-scale-in max-h-[70vh] overflow-y-auto">
     {loadingCategories ? (
       <div className="px-4 py-8 text-center">
         <div className="spinner-mixxo mx-auto"></div>
@@ -414,8 +414,8 @@ const Header = ({
         No hay categorías
       </div>
     ) : (
-      <>
-        <div className="grid grid-cols-2 gap-4 px-4">
+      <div>
+        <div className="grid grid-cols-2 gap-4 px-4 py-4">
           {mainCategories.map((category, index) => (
             <div key={index} className="space-y-2">
               <button
@@ -425,7 +425,11 @@ const Header = ({
                 }}
                 className="font-semibold text-gray-800 hover:text-mixxo-pink-500 transition-colors text-left flex items-center space-x-2 w-full group"
               >
-                {category.icon && <span className="text-xl group-hover:scale-110 transition-transform">{category.icon}</span>}
+                {category.icon && (
+                  <span className="text-xl group-hover:scale-110 transition-transform">
+                    {category.icon}
+                  </span>
+                )}
                 <span>{category.name}</span>
               </button>
               {category.subcategories && category.subcategories.length > 0 && (
@@ -448,6 +452,18 @@ const Header = ({
             </div>
           ))}
         </div>
+        
+        {mainCategories.length > 6 && (
+          <div className="text-center pt-3 pb-2 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+            <p className="text-xs text-gray-500">
+              ↕️ Desliza para ver más categorías
+            </p>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
         
         {/* Indicador de scroll */}
         {mainCategories.length > 6 && (
