@@ -18,7 +18,7 @@ import AdminPanel from './components/admin/AdminPanel';
 import useProductFilters from './hooks/useProductFilters';
 import PWAHelper from './components/PWAHelper';
 import UserProfile from './components/UserProfile';
-import WhatsAppButton from './components/WhatsAppButton';
+import Chatbot from './components/chatbot/Chatbot';
 import ProductCarousel from './components/ProductCarousel';
 import MetaPixel from './services/MetaPixel';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
@@ -107,10 +107,11 @@ function AppContent() {
   };
 
   const handleViewProduct = (productId, productSlug) => {
-  // Si se proporciona slug, navegar a la URL con slug
-  if (productSlug && window.location.pathname !== '/') {
+  // Navegar usando React Router si tenemos slug
+  if (productSlug) {
     window.location.href = `/producto/${productSlug}`;
   } else {
+    // Fallback para productos sin slug
     setSelectedProductId(productId);
     setCurrentView('product');
   }
@@ -148,14 +149,12 @@ function AppContent() {
 
   const renderHomeView = () => (
   <main>
-    {/* CARRUSEL DIRECTO - Sin hero previo */}
+    {/* 1️⃣ CARRUSEL - Primera sección */}
     <section className="relative bg-animated-gradient text-white py-12 overflow-hidden">
-      {/* Elementos flotantes decorativos */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl float-element"></div>
       <div className="absolute bottom-20 right-10 w-40 h-40 bg-mixxo-cyan-bright/20 rounded-full blur-3xl float-element" style={{animationDelay: '2s'}}></div>
       
       <div className="relative container mx-auto px-4">
-        {/* 🎨 CARRUSEL DE PRODUCTOS - INMEDIATAMENTE */}
         <ProductCarousel 
           products={products}
           onProductClick={handleViewProduct}
@@ -164,155 +163,49 @@ function AppContent() {
       </div>
     </section>
 
-    {/* Banner de bienvenida compacto DESPUÉS del carrusel */}
-    <section className="py-12 bg-gradient-to-br from-mixxo-pink-500 via-mixxo-purple-500 to-mixxo-cyan-500 text-white">
-      <div className="container mx-auto px-4 text-center">
-        <h2 className="text-4xl md:text-5xl font-black mb-4 drop-shadow-lg">
-          Bienvenido a <span className="text-white">mixxo</span>
-        </h2>
-        <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
-          Todo lo que necesitas en un solo lugar con los mejores precios
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button 
-            onClick={() => handleViewCatalog()}
-            className="bg-white text-mixxo-pink-500 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
-          >
-            <span className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              Ver Todo el Catálogo
-            </span>
-          </button>
-          <button 
-            onClick={() => handleViewCatalog('all', 'ofertas')}
-            className="glass-dark backdrop-blur-md text-white px-8 py-4 rounded-xl font-bold text-lg border-2 border-white/30 hover:border-white transition-all duration-300 hover:scale-105"
-          >
-            <span className="flex items-center justify-center gap-2">
-              <span className="text-2xl">🔥</span>
-              Mejores Ofertas
-            </span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    {/* Categorías con diseño moderno */}
-    <section className="py-20 bg-white">
+    {/* 2️⃣ CATÁLOGO COMPLETO - Inmediatamente después del carrusel */}
+    <section className="py-12 bg-gray-50">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
+        {/* Header del catálogo */}
+        <div className="text-center mb-8">
           <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-            Explora por <span className="text-gradient-mixxo">Categorías</span>
+            Explora Nuestro <span className="text-gradient-mixxo">Catálogo</span>
           </h2>
           <p className="text-gray-600 text-xl font-medium">
-            Encuentra exactamente lo que necesitas
+            {products.length} productos disponibles para ti
           </p>
         </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-          {[
-            { name: 'Tecnología', icon: '📱', category: 'tecnologia', gradient: 'from-mixxo-pink-500 to-mixxo-purple-500' },
-            { name: 'Hogar', icon: '🏠', category: 'hogar', gradient: 'from-mixxo-cyan-500 to-mixxo-purple-500' },
-            { name: 'Deportes', icon: '⚽', category: 'deportes', gradient: 'from-green-500 to-mixxo-cyan-500' },
-            { name: 'Moda', icon: '👕', category: 'moda', gradient: 'from-mixxo-pink-500 to-mixxo-cyan-500' },
-            { name: 'Libros', icon: '📚', category: 'libros', gradient: 'from-orange-500 to-mixxo-pink-500' },
-            { name: 'Salud', icon: '💊', category: 'salud', gradient: 'from-mixxo-purple-500 to-mixxo-pink-500' }
-          ].map((cat, index) => (
-            <button
-              key={index}
-              onClick={() => handleViewCatalog(cat.category)}
-              className="group relative p-8 glass-card rounded-3xl hover:shadow-mixxo-lg transition-all duration-300 hover:-translate-y-2 overflow-hidden"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
-              <div className="relative">
-                <div className="text-5xl mb-4 group-hover:scale-125 transition-transform duration-300">
-                  {cat.icon}
-                </div>
-                <h3 className="font-bold text-gray-800 group-hover:text-gradient-mixxo transition-colors text-lg">
-                  {cat.name}
-                </h3>
-              </div>
-            </button>
-          ))}
-        </div>
+
+        {/* Filtros de productos */}
+        <ProductFilters
+          products={products}
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          selectedCategories={selectedCategories}
+          onCategoryChange={handleCategoryChange}
+          priceRange={priceRange}
+          onPriceRangeChange={handlePriceRangeChange}
+          minRating={minRating}
+          onRatingChange={handleRatingChange}
+          sortBy={sortBy}
+          onSortChange={handleSortChange}
+          showOnlyInStock={showOnlyInStock}
+          onStockFilterChange={handleStockFilterChange}
+          onFilterChange={() => {}}
+        />
+
+        {/* Resultados con scroll infinito */}
+        <ProductResults
+          products={filteredProducts}
+          filterStats={filterStats}
+          searchTerm={searchTerm}
+          selectedCategories={selectedCategories}
+          onProductClick={handleViewProduct}
+        />
       </div>
     </section>
 
-    {/* Productos Destacados */}
-    {featuredProducts.length > 0 && (
-      <section className="py-20 section-gradient-1">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-16">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-                <span className="text-gradient-pink">Destacados</span> del Mes
-              </h2>
-              <p className="text-gray-600 text-xl font-medium">
-                Los productos más populares y mejor valorados
-              </p>
-            </div>
-            <button 
-              onClick={() => handleViewCatalog('all', 'destacados')}
-              className="hidden md:block btn-cyan"
-            >
-              Ver Todos
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {featuredProducts.slice(0, 8).map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onProductClick={handleViewProduct}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-    )}
-
-    {/* Ofertas Especiales */}
-    {saleProducts.length > 0 && (
-      <section className="py-20 bg-gradient-to-br from-mixxo-pink-50 via-mixxo-purple-50 to-mixxo-cyan-50 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-mixxo-pink-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-mixxo-cyan-500/10 rounded-full blur-3xl"></div>
-        
-        <div className="container mx-auto px-4 relative">
-          <div className="flex justify-between items-center mb-16">
-            <div>
-              <div className="inline-flex items-center gap-3 bg-gradient-mixxo text-white px-6 py-3 rounded-full font-bold text-sm mb-4 shadow-mixxo">
-                <span className="text-2xl">🔥</span>
-                OFERTAS LIMITADAS
-              </div>
-              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-                Aprovecha Hasta <span className="text-gradient-mixxo">50% OFF</span>
-              </h2>
-              <p className="text-gray-600 text-xl font-medium">
-                Descuentos increíbles por tiempo limitado
-              </p>
-            </div>
-            <button 
-              onClick={() => handleViewCatalog('all', 'ofertas')}
-              className="hidden md:block btn-mixxo"
-            >
-              Ver Ofertas
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {saleProducts.slice(0, 8).map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onProductClick={handleViewProduct}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-    )}
-
-    {/* Beneficios */}
+    {/* 3️⃣ Beneficios - Al final de la página */}
     <section className="py-20 bg-white">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
@@ -339,7 +232,7 @@ function AppContent() {
       </div>
     </section>
 
-    {/* Newsletter */}
+    {/* 4️⃣ Newsletter */}
     <section className="py-20 bg-gradient-mixxo text-white relative overflow-hidden">
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10 w-40 h-40 bg-white rounded-full blur-3xl float-element"></div>
@@ -496,12 +389,10 @@ function AppContent() {
 
       {/* 🔥 Botón flotante de WhatsApp con Chatbot */}
       {currentView !== 'admin' && (
-        <WhatsAppButton 
-          phoneNumber="573144505320"
-          companyName="TechStore"
-          position="right"
-          showTooltip={true}
-        />
+        <Chatbot 
+  phoneNumber="573144505320"
+  companyName="mixxo"
+/>
       )}
       
       {currentView === 'home' && renderHomeView()}
@@ -726,8 +617,9 @@ function ProductDetailRoute() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { products } = useProducts();
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   
-  // Buscar producto por slug o ID
   const product = products.find(p => p.slug === slug || p.id.toString() === slug);
   
   if (!product) {
@@ -746,18 +638,44 @@ function ProductDetailRoute() {
   return (
     <>
       <Header 
-        onCartClick={() => {}}
+        onCartClick={() => setIsCartOpen(true)}
         onHomeClick={() => navigate('/')}
+        onAdminClick={() => navigate('/admin')}
+        onCategoryClick={(category) => navigate(`/?categoria=${category}`)}
+        onOffersClick={() => navigate('/?seccion=ofertas')}
+        onNewProductsClick={() => navigate('/?seccion=nuevos')}
+        onBrandsClick={() => navigate('/')}
+        onSupportClick={() => alert('Soporte próximamente')}
+        onProfileClick={() => setShowUserProfile(true)}
       />
+      
+      <Cart
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        onCheckout={() => navigate('/checkout')}
+      />
+      
+      {showUserProfile && (
+        <UserProfile onClose={() => setShowUserProfile(false)} />
+      )}
+      
       <ProductDetail 
         productId={product.id}
         onBack={() => navigate(-1)}
-        onProductClick={(id, slug) => navigate(`/producto/${slug || id}`)}
+        onProductClick={(id, slug) => {
+          if (slug) {
+            navigate(`/producto/${slug}`);
+          }
+        }}
+      />
+      
+      <WhatsAppButton 
+        phoneNumber="573144505320"
+        companyName="TechStore"
       />
     </>
   );
 }
-
 function App() {
   useEffect(() => {
     MetaPixel.init();

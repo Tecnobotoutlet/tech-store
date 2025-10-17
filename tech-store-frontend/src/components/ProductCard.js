@@ -68,7 +68,7 @@ const ProductCard = ({ product, onProductClick, className = "" }) => {
     return [...Array(5)].map((_, index) => (
       <Star
         key={index}
-        className={`w-4 h-4 ${
+        className={`w-3 h-3 ${
           index < Math.floor(rating)
             ? 'star-filled fill-current'
             : 'text-gray-300'
@@ -93,48 +93,48 @@ const ProductCard = ({ product, onProductClick, className = "" }) => {
       className={`product-card-mixxo cursor-pointer group ${className}`}
     >
       {/* Badges Container */}
-      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
+      <div className="absolute top-2 left-2 z-20 flex flex-col gap-1">
         {isNew && (
-          <div className="badge-new shimmer">
-            <Sparkles className="w-3 h-3" />
-            NUEVO
-          </div>
+          <div className="badge-new shimmer text-[10px] px-2 py-0.5">
+  <Sparkles className="w-2.5 h-2.5" />
+  NUEVO
+</div>
         )}
         {discount > 0 && (
-          <div className="badge-mixxo">
-            <Zap className="w-3 h-3" />
-            -{discount}%
-          </div>
+          <div className="badge-mixxo text-[10px] px-2 py-0.5">
+  <Zap className="w-2.5 h-2.5" />
+  -{discount}%
+</div>
         )}
         {isFeatured && !isNew && (
-          <div className="badge-cyan">
-            <Star className="w-3 h-3 fill-current" />
-            DESTACADO
-          </div>
+          <div className="badge-cyan text-[10px] px-2 py-0.5">
+  <Star className="w-2.5 h-2.5 fill-current" />
+  TOP
+</div>
         )}
       </div>
 
       {/* Wishlist Button */}
       <button
         onClick={handleWishlistClick}
-        className={`absolute top-3 right-3 z-20 p-2.5 rounded-full backdrop-blur-md transition-all duration-200 ${
+        className={`absolute top-2 right-2 z-20 p-1.5 rounded-full backdrop-blur-md transition-all duration-200 ${
           isProductInWishlist
             ? 'bg-mixxo-pink-500 shadow-mixxo scale-110'
             : 'glass-mixxo hover:scale-110'
         }`}
       >
         <Heart
-          className={`w-5 h-5 ${
+          className={`w-3 h-3 ${
             isProductInWishlist ? 'text-white fill-current' : 'text-gray-600'
           }`}
         />
       </button>
 
       {/* Image Container */}
-      <div className="product-image-wrapper relative h-64 overflow-hidden">
+      <div className="product-image-wrapper relative h-40 overflow-hidden">
         {!imageLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-            <div className="spinner-mixxo"></div>
+            <div className="spinner-mixxo w-6 h-6 border-2"></div>
           </div>
         )}
         <img
@@ -154,10 +154,10 @@ const ProductCard = ({ product, onProductClick, className = "" }) => {
           <div className="flex gap-3">
             <button 
               onClick={handleQuickViewClick}
-              className="glass-dark text-white p-3 rounded-full hover:scale-110 transition-all duration-200 shadow-lg backdrop-blur-md"
+              className="glass-dark text-white p-2 rounded-full hover:scale-110 transition-all duration-200 shadow-lg backdrop-blur-md"
               title="Vista rápida"
             >
-              <Eye className="w-5 h-5" />
+              <Eye className="w-4 h-4" />
             </button>
             <button 
               onClick={handleAddToCartClick}
@@ -165,35 +165,35 @@ const ProductCard = ({ product, onProductClick, className = "" }) => {
               className="bg-gradient-mixxo text-white p-3 rounded-full hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-mixxo"
               title={inStock ? "Agregar al carrito" : "No disponible"}
             >
-              <ShoppingCart className="w-5 h-5" />
+              <ShoppingCart className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-5">
+      <div className="p-3">
         {/* Category and Brand */}
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold text-mixxo-pink-500 bg-mixxo-pink-50 px-3 py-1.5 rounded-full">
+          <span className="text-[10px] font-bold text-mixxo-pink-500 bg-mixxo-pink-50 px-2 py-1 rounded-full">
             {subcategoryName || categoryName}
           </span>
-          <span className="text-xs text-gray-500 font-semibold">{brand}</span>
+          <span className="text-[10px] text-gray-500 font-semibold">{brand}</span>
         </div>
 
         {/* Product Name */}
-        <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-gradient-mixxo transition-all leading-tight min-h-[3.5rem]">
+        <h3 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-gradient-mixxo transition-all leading-tight min-h-[2.5rem]">
           {name}
         </h3>
 
         {/* Specifications Preview */}
         {specifications && specifications.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-2">
             <div className="flex flex-wrap gap-2">
-              {specifications.slice(0, 3).map((spec, index) => (
+              {specifications.slice(0, 2).map((spec, index) => (
                 <div
                   key={index}
-                  className="glass-mixxo px-3 py-1.5 rounded-full text-xs font-medium text-gray-700"
+                  className="glass-mixxo px-2 py-0.5 rounded-full text-[10px] font-medium text-gray-700"
                 >
                   {spec.value}
                 </div>
@@ -203,38 +203,38 @@ const ProductCard = ({ product, onProductClick, className = "" }) => {
         )}
 
         {/* Rating */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-1.5 mb-2">
           <div className="flex">{renderStars(rating)}</div>
-          <span className="text-sm text-gray-900 font-bold">
+          <span className="text-xs text-gray-900 font-bold">
             {rating}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-[10px] text-gray-500">
             ({reviews})
           </span>
         </div>
 
         {/* Price */}
-        <div className="mb-4">
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="price-tag text-3xl">
+        <div className="mb-2">
+          <div className="flex items-baseline gap-1.5 mb-0.5">
+            <span className="price-tag text-xl">
               {formatPrice(price)}
             </span>
             {originalPrice && originalPrice > price && (
-              <span className="text-sm text-gray-400 line-through">
+              <span className="text-xs text-gray-400 line-through">
                 {formatPrice(originalPrice)}
               </span>
             )}
           </div>
           {discount > 0 && (
-            <div className="text-sm font-bold text-green-600 flex items-center gap-1">
-              <Zap className="w-4 h-4" />
+            <div className="text-xs font-bold text-green-600 flex items-center gap-1">
+              <Zap className="w-3 h-3" />
               Ahorras {formatPrice(originalPrice - price)}
             </div>
           )}
         </div>
 
         {/* Stock Status */}
-        <div className={`mb-4 text-sm font-bold px-3 py-2 rounded-xl border-2 ${stockStatus.bgColor} ${stockStatus.color} ${stockStatus.borderColor}`}>
+        <div className={`mb-2 text-xs font-bold px-2 py-1 rounded-lg border ${stockStatus.bgColor} ${stockStatus.color} ${stockStatus.borderColor}`}>
           {stockStatus.text}
         </div>
 
@@ -242,13 +242,13 @@ const ProductCard = ({ product, onProductClick, className = "" }) => {
         <button
           onClick={handleAddToCartClick}
           disabled={!inStock}
-          className={`w-full py-3.5 px-4 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+          className={`w-full py-2 px-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
             inStock
               ? 'btn-mixxo'
               : 'bg-gray-200 text-gray-500 cursor-not-allowed'
           }`}
         >
-          <ShoppingCart className="w-5 h-5" />
+          <ShoppingCart className="w-4 h-4" />
           {inStock ? 'Agregar' : 'No disponible'}
         </button>
       </div>

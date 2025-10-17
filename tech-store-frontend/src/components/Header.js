@@ -1,4 +1,4 @@
-// src/components/Header.js - Versión mixxo moderna
+// src/components/Header.js - Versión mixxo moderna CORREGIDA
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -70,23 +70,18 @@ const Header = ({
     : 0;
 
   const handleCartClick = () => {
-    requireAuth(() => {
-      if (onCartClick) onCartClick();
-    });
+    if (onCartClick) onCartClick();
   };
 
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
 
-  // 🎯 NUEVA FUNCIÓN: Manejar búsqueda con tracking
   const handleSearch = (value) => {
-    // Llamar a la función de búsqueda original
     if (onSearch) {
       onSearch(value);
     }
     
-    // 🎯 META PIXEL: Rastrear búsqueda (solo si tiene 3+ caracteres)
     if (value.trim().length >= 3) {
       MetaPixel.trackSearch(value.trim());
     }
@@ -95,7 +90,7 @@ const Header = ({
   return (
     <header className="sticky top-0 z-40 glass-card shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Top Bar - Información promocional */}
+        {/* Top Bar */}
         <div className="bg-animated-gradient text-white text-center py-2 -mx-4 sm:-mx-6 lg:-mx-8 px-4">
           <p className="text-sm font-medium">
             ✨ Envío gratis en compras superiores a $200.000 | 🎉 Hasta 50% OFF en productos seleccionados
@@ -137,18 +132,18 @@ const Header = ({
                 </svg>
               </div>
               <input
-  type="text"
-  className={`block w-full pl-12 pr-4 py-3 rounded-2xl leading-5 transition-all duration-300 font-medium ${
-    isSearchFocused 
-      ? 'border-2 border-mixxo-pink-500 shadow-mixxo bg-white ring-4 ring-mixxo-pink-500/10' 
-      : 'border-2 border-gray-200 hover:border-gray-300 bg-gray-50'
-  }`}
-  placeholder="Busca productos, marcas, categorías..."
-  value={searchQuery || ''}
-  onChange={(e) => handleSearch(e.target.value)}
-  onFocus={() => setIsSearchFocused(true)}
-  onBlur={() => setIsSearchFocused(false)}
-/>
+                type="text"
+                className={`block w-full pl-12 pr-4 py-3 rounded-2xl leading-5 transition-all duration-300 font-medium ${
+                  isSearchFocused 
+                    ? 'border-2 border-mixxo-pink-500 shadow-mixxo bg-white ring-4 ring-mixxo-pink-500/10' 
+                    : 'border-2 border-gray-200 hover:border-gray-300 bg-gray-50'
+                }`}
+                placeholder="Busca productos, marcas, categorías..."
+                value={searchQuery || ''}
+                onChange={(e) => handleSearch(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+              />
             </div>
           </div>
 
@@ -378,12 +373,12 @@ const Header = ({
               </svg>
             </div>
             <input
-  type="text"
-  className="block w-full pl-10 pr-3 py-3 border-2 border-gray-200 rounded-2xl leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:border-mixxo-pink-500 focus:ring-2 focus:ring-mixxo-pink-500/20"
-  placeholder="Buscar productos..."
-  value={searchQuery || ''}
-  onChange={(e) => handleSearch(e.target.value)}
-/>
+              type="text"
+              className="block w-full pl-10 pr-3 py-3 border-2 border-gray-200 rounded-2xl leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:border-mixxo-pink-500 focus:ring-2 focus:ring-mixxo-pink-500/20"
+              placeholder="Buscar productos..."
+              value={searchQuery || ''}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
           </div>
         </div>
 
@@ -405,7 +400,7 @@ const Header = ({
               </button>
 
               {showCategoriesMenu && (
-                <div className="absolute top-full left-0 mt-2 w-96 glass-card rounded-2xl shadow-mixxo-lg border border-gray-100 py-4 z-50 animate-scale-in">
+                <div className="absolute top-full left-0 mt-2 w-96 glass-card rounded-2xl shadow-mixxo-lg border border-gray-100 z-50 animate-scale-in max-h-[70vh] overflow-y-auto">
                   {loadingCategories ? (
                     <div className="px-4 py-8 text-center">
                       <div className="spinner-mixxo mx-auto"></div>
@@ -416,38 +411,52 @@ const Header = ({
                       No hay categorías
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-4 px-4">
-                      {mainCategories.map((category, index) => (
-                        <div key={index} className="space-y-2">
-                          <button
-                            onClick={() => {
-                              onCategoryClick && onCategoryClick(category.name);
-                              setShowCategoriesMenu(false);
-                            }}
-                            className="font-semibold text-gray-800 hover:text-mixxo-pink-500 transition-colors text-left flex items-center space-x-2 w-full group"
-                          >
-                            {category.icon && <span className="text-xl group-hover:scale-110 transition-transform">{category.icon}</span>}
-                            <span>{category.name}</span>
-                          </button>
-                          {category.subcategories && category.subcategories.length > 0 && (
-                            <ul className="space-y-1 pl-8">
-                              {category.subcategories.slice(0, 4).map((sub, subIndex) => (
-                                <li key={subIndex}>
-                                  <button
-                                    onClick={() => {
-                                      onCategoryClick && onCategoryClick(sub.name);
-                                      setShowCategoriesMenu(false);
-                                    }}
-                                    className="text-sm text-gray-600 hover:text-mixxo-cyan-500 transition-colors text-left"
-                                  >
-                                    {sub.name}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                    <div>
+                      <div className="grid grid-cols-2 gap-4 px-4 py-4">
+                        {mainCategories.map((category, index) => (
+                          <div key={index} className="space-y-2">
+                            <button
+                              onClick={() => {
+                                onCategoryClick && onCategoryClick(category.name);
+                                setShowCategoriesMenu(false);
+                              }}
+                              className="font-semibold text-gray-800 hover:text-mixxo-pink-500 transition-colors text-left flex items-center space-x-2 w-full group"
+                            >
+                              {category.icon && (
+                                <span className="text-xl group-hover:scale-110 transition-transform">
+                                  {category.icon}
+                                </span>
+                              )}
+                              <span>{category.name}</span>
+                            </button>
+                            {category.subcategories && category.subcategories.length > 0 && (
+                              <ul className="space-y-1 pl-8">
+                                {category.subcategories.slice(0, 4).map((sub, subIndex) => (
+                                  <li key={subIndex}>
+                                    <button
+                                      onClick={() => {
+                                        onCategoryClick && onCategoryClick(sub.name);
+                                        setShowCategoriesMenu(false);
+                                      }}
+                                      className="text-sm text-gray-600 hover:text-mixxo-cyan-500 transition-colors text-left"
+                                    >
+                                      {sub.name}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {mainCategories.length > 6 && (
+                        <div className="text-center pt-3 pb-2 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                          <p className="text-xs text-gray-500">
+                            ↕️ Desliza para ver más categorías
+                          </p>
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
