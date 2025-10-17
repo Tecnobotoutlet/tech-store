@@ -18,7 +18,7 @@ import AdminPanel from './components/admin/AdminPanel';
 import useProductFilters from './hooks/useProductFilters';
 import PWAHelper from './components/PWAHelper';
 import UserProfile from './components/UserProfile';
-import WhatsAppButton from './components/WhatsAppButton';
+import Chatbot from './components/chatbot/Chatbot';
 import ProductCarousel from './components/ProductCarousel';
 import MetaPixel from './services/MetaPixel';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
@@ -389,12 +389,10 @@ function AppContent() {
 
       {/* 🔥 Botón flotante de WhatsApp con Chatbot */}
       {currentView !== 'admin' && (
-        <WhatsAppButton 
-          phoneNumber="573144505320"
-          companyName="TechStore"
-          position="right"
-          showTooltip={true}
-        />
+        <Chatbot 
+  phoneNumber="573144505320"
+  companyName="mixxo"
+/>
       )}
       
       {currentView === 'home' && renderHomeView()}
