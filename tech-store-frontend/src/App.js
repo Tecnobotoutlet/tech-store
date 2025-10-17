@@ -669,10 +669,10 @@ function ProductDetailRoute() {
         }}
       />
       
-      <WhatsAppButton 
-        phoneNumber="573144505320"
-        companyName="TechStore"
-      />
+      <Chatbot 
+  phoneNumber="573144505320"
+  companyName="mixxo"
+/>
     </>
   );
 }
