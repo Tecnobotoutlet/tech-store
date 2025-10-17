@@ -390,16 +390,17 @@ const ProductCarousel = ({ products, onProductClick, autoPlaySpeed = 3000 }) => 
               ))}
             </div>
           )}
->>>>>>> 2bbe7650825befecfcc0203073fc8afc08c0ed52
+
         </div>
       </div>
     </div>
   );
 };
 
-<<<<<<< HEAD
+
 export default ProductCarousel;
 =======
 export default ProductCarousel;
 
->>>>>>> 2bbe7650825befecfcc0203073fc8afc08c0ed52
+
+
